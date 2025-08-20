@@ -1,0 +1,227 @@
+:root { 
+  --bg: #f4f6f9;
+  --text: #1a1a1a;
+  --primary: #0056d2;
+  --primary-light: #1e6ef5;
+  --secondary: #e9ecef;
+  --accent: #ffc107;
+  --radius: 16px;
+  --shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+body.dark {
+  --bg: #121212;
+  --text: #f2f4f7;
+  --secondary: #2a2a2a;
+  --shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Header */
+header {
+  padding: 1rem 2rem;
+  background: var(--primary);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  letter-spacing: 0.5px;
+}
+
+.controls input, 
+.controls button {
+  margin: 0 0.25rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius);
+  border: none;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.controls button {
+  background: var(--accent);
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.controls button:hover {
+  background: #e0a800;
+}
+
+/* Chat container */
+#chat-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(to bottom, #ffffff, var(--secondary));
+}
+
+#chat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Mensajes */
+.message {
+  padding: 0.8rem 1.2rem;
+  border-radius: var(--radius);
+  max-width: 70%;
+  box-shadow: var(--shadow);
+  line-height: 1.4;
+  animation: fadeIn 0.3s ease;
+}
+
+.message.user {
+  background: var(--primary-light);
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.message.bot {
+  background: var(--secondary);
+  color: var(--text);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+/* Footer */
+footer {
+  padding: 1rem;
+  background: #fff;
+  border-top: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.actions button {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.actions button:hover {
+  background: var(--primary-light);
+}
+
+/* Input de mensaje */
+.message-box {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.message-box input {
+  flex: 1;
+  padding: 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: var(--radius);
+  outline: none;
+  transition: border 0.2s;
+}
+
+.message-box input:focus {
+  border: 1px solid var(--primary);
+}
+
+.message-box button {
+  padding: 0.8rem 1.2rem;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius);
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.message-box button:hover {
+  background: var(--primary-light);
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: var(--bg);
+  color: var(--text);
+  padding: 2rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  width: 90%;
+  max-width: 400px;
+}
+
+.modal-actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.modal-actions button {
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-actions button:first-child {
+  background: var(--secondary);
+}
+
+.modal-actions button:last-child {
+  background: var(--primary);
+  color: white;
+}
+
+.modal-actions button:last-child:hover {
+  background: var(--primary-light);
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+  from {opacity: 0; transform: translateY(10px);}
+  to {opacity: 1; transform: translateY(0);}
+}
