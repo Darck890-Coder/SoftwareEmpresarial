@@ -1,87 +1,89 @@
 body {
-font-family: Arial, sans-serif; 
-margin:0; 
-background:#0b1020; 
-color:#fff;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background: #0b1020;
+  color: #fff;
 }
 
 header {
-display:flex; 
-justify-content:space-between; 
-padding:1rem; 
-background:#121834;
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem;
+  background: #121834;
 }
 
 .logo {
-font-weight:bold;
+  font-weight: bold;
 }
 
 .tabs {
-display:flex; 
-gap:.5rem;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .tab-btn {
-padding:.5rem 1rem; 
-border:none; 
-border-radius:6px; 
-cursor:pointer; 
-background:#151c3f; 
-color:#fff;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #151c3f;
+  color: #fff;
 }
 
 .tab-btn.active {
-background:#6aa2ff;
+  background: #6aa2ff;
 }
 
 .container {
-padding:1rem;
+  padding: 1rem;
 }
 
 .card {
-background:#151c3f; 
-border-radius:8px; 
-padding:1rem; 
-margin-bottom:1rem;
+  background: #151c3f;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
 }
 
 .actions {
-margin-top:1rem;
+  margin-top: 1rem;
 }
 
 .btn {
-padding:.5rem 1rem; 
-border:none; 
-border-radius:6px; 
-cursor:pointer; 
-background:#6aa2ff; 
-color:#fff;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #6aa2ff;
+  color: #fff;
 }
 
 .btn.success {
-background:#59d390;
+  background: #59d390;
 }
 
 table {
-width:100%; 
-border-collapse:collapse;
+  width: 100%;
+  border-collapse: collapse;
 }
 
-th,td {
-border:1px solid #333; 
-padding:.5rem;}
+th,
+td {
+  border: 1px solid #333;
+  padding: 0.5rem;
+}
 
 .toast {
-position:fixed; 
-bottom:1rem; 
-right:1rem; 
-background:#333; 
-padding:.5rem 1rem; 
-border-radius:6px; 
-opacity:0; 
-transition:.3s;
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background: #333;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  opacity: 0;
+  transition: 0.3s;
 }
 
 .toast.show {
-opacity:1;
+  opacity: 1;
 }
