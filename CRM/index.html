@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mini CRM + n8n</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <header>
+    <div class="logo">⚡ Mini CRM</div>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="clientes">Clientes</button>
+      <button class="tab-btn" data-tab="oportunidades">Oportunidades</button>
+      <button class="tab-btn" data-tab="actividades">Actividades</button>
+      <button class="tab-btn" data-tab="reportes">Reportes & n8n</button>
+      <button class="tab-btn" data-tab="config">Configuración</button>
+    </nav>
+  </header>
+
+  <main class="container">
+
+    <!-- CLIENTES -->
+    <section class="tab" id="tab-clientes">
+      <div class="grid">
+        <div class="card">
+          <h3>Registrar / Editar Cliente</h3>
+          <div class="content">
+            <form id="clienteForm">
+              <input type="hidden" id="clienteId" />
+              <label>Nombre</label>
+              <input required id="cNombre" />
+              <label>Email</label>
+              <input type="email" id="cEmail" />
+              <div class="actions">
+                <button class="btn success" type="submit">Guardar cliente</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Clientes</h3>
+          <div class="content">
+            <table>
+              <thead>
+                <tr><th>Nombre</th><th>Email</th></tr>
+              </thead>
+              <tbody id="clientesTabla"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- OPORTUNIDADES -->
+    <section class="tab" id="tab-oportunidades" hidden>
+      <div class="card">
+        <h3>Nueva Oportunidad</h3>
+        <form id="oppForm">
+          <label>Cliente</label>
+          <select id="oCliente"></select>
+          <label>Título</label>
+          <input id="oTitulo" />
+          <label>Monto</label>
+          <input type="number" id="oMonto" />
+          <div class="actions">
+            <button class="btn success" type="submit">Guardar oportunidad</button>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Oportunidades</h3>
+        <table>
+          <thead>
+            <tr><th>Cliente</th><th>Título</th><th>Monto</th></tr>
+          </thead>
+          <tbody id="oppsTabla"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ACTIVIDADES -->
+    <section class="tab" id="tab-actividades" hidden>
+      <div class="card">
+        <h3>Nueva Actividad</h3>
+        <form id="actForm">
+          <label>Tipo</label>
+          <select id="aTipo">
+            <option>Llamada</option>
+            <option>Correo</option>
+          </select>
+          <label>Cliente</label>
+          <select id="aCliente"></select>
+          <label>Notas</label>
+          <textarea id="aNotas"></textarea>
+          <div class="actions">
+            <button class="btn success" type="submit">Guardar actividad</button>
+            <button class="btn" type="button" id="btnEmailActividad">Enviar correo por n8n</button>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Actividades</h3>
+        <table>
+          <thead>
+            <tr><th>Tipo</th><th>Cliente</th><th>Notas</th></tr>
+          </thead>
+          <tbody id="actsTabla"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- REPORTES & N8N -->
+    <section class="tab" id="tab-reportes" hidden>
+      <div class="card">
+        <h3>Reportes</h3>
+        <div class="actions">
+          <button class="btn" id="btnEnviarReporte">Enviar Reporte a n8n</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Encuesta CSAT</h3>
+        <label>Cliente</label>
+        <select id="csatCliente"></select>
+        <label>Calificación</label>
+        <input type="number" id="csatScore" min="0" max="10" />
+        <label>Comentario</label>
+        <textarea id="csatComment"></textarea>
+        <div class="actions">
+          <button class="btn" id="btnEnviarCsat">Enviar CSAT a n8n</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFIGURACIÓN -->
+    <section class="tab" id="tab-config" hidden>
+      <div class="card">
+        <h3>Conexión con n8n</h3>
+        <label>Webhook de Emails</label>
+        <input id="n8nEmail" placeholder="https://.../webhook/send-email" />
+        <label>Webhook de Reportes</label>
+        <input id="n8nReport" placeholder="https://.../webhook/sales-report" />
+        <label>Webhook de CSAT</label>
+        <input id="n8nCsat" placeholder="https://.../webhook/csat" />
+        <div class="actions">
+          <button class="btn success" id="guardarCfg">Guardar</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <script src="script.js"></script>
+</body>
+</html>
