@@ -6,7 +6,6 @@
     <title>CRM</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-
   <body>
     <header>
       <div class="logo">Refrescos del Sol</div>
@@ -24,7 +23,7 @@
       <section class="tab" id="tab-clientes">
         <div class="grid">
           <div class="card">
-            <h3>Registrar / Editar Cliente</h3>
+            <h3>Registrar/Editar Cliente</h3>
             <form id="clienteForm">
               <input type="hidden" id="clienteId" />
               <label>Nombre</label>
@@ -56,6 +55,7 @@
                     <th>Email</th>
                     <th>RFC</th>
                     <th>Razón Social</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="clientesTabla"></tbody>
@@ -101,6 +101,7 @@
                 <th>Monto</th>
                 <th>Tipo</th>
                 <th>Descripción</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="oppsTabla"></tbody>
@@ -137,7 +138,7 @@
                 Guardar actividad
               </button>
               <button class="btn" type="button" id="btnEmailActividad">
-                Enviar correo por n8n
+                Enviar email
               </button>
             </div>
           </form>
@@ -152,6 +153,7 @@
                 <th>Notas</th>
                 <th>Tipo Cliente</th>
                 <th>Descripción Cliente</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="actsTabla"></tbody>
@@ -181,7 +183,7 @@
           <label>Puntos de mejora</label>
           <textarea id="csatMejora"></textarea>
           <div class="actions">
-            <button class="btn" id="btnEnviarCsat">Enviar CSAT a n8n</button>
+            <button class="btn" id="btnEnviarCsat">Enviar CSAT</button>
           </div>
         </div>
       </section>
@@ -208,6 +210,25 @@
         </div>
       </section>
     </main>
+
+    <!-- Burbuja de chat -->
+    <div class="chat-container">
+      <div class="chat-bubble" id="chat-toggle">💬</div>
+      <div class="chat-box" id="chat-box">
+        <div class="chat-header">Chat Refrescos del Sol ☀️</div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="msg bot">¡Hola! ¿En qué puedo ayudarte?</div>
+        </div>
+        <div class="chat-input">
+          <input
+            type="text"
+            id="chat-input"
+            placeholder="Escribe un mensaje..."
+          />
+          <button id="send-btn">➤</button>
+        </div>
+      </div>
+    </div>
 
     <div id="toast" class="toast"></div>
     <script src="script.js"></script>

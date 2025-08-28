@@ -40,13 +40,51 @@ const renderClientes = () => {
     .map(
       (c) =>
         `<tr>
-      <td>${c.nombre}</td>
-      <td>${c.email}</td>
-      <td>${c.rfc || ""}</td>
-      <td>${c.razon || ""}</td>
-    </tr>`
+                <td>${c.nombre}</td>
+                <td>${c.email}</td>
+                <td>${c.rfc || ""}</td>
+                <td>${c.razon || ""}</td>
+                <td class="acciones-tabla">
+                    <button class="btn edit btn-tabla" onclick="editarCliente('${
+                      c.id
+                    }')">Editar</button>
+                    <button class="btn danger btn-tabla" onclick="eliminarCliente('${
+                      c.id
+                    }')">Eliminar</button>
+                </td>
+            </tr>`
     )
     .join("");
+};
+
+const editarCliente = (id) => {
+  const cliente = state.clientes.find((c) => c.id === id);
+  if (!cliente) return;
+
+  $$("#clienteId").value = cliente.id;
+  $$("#cNombre").value = cliente.nombre;
+  $$("#cEmail").value = cliente.email;
+  $$("#cRfc").value = cliente.rfc;
+  $$("#cDireccion").value = cliente.direccion;
+  $$("#cTelefono").value = cliente.telefono;
+  $$("#cRazon").value = cliente.razon;
+
+  toast("Cliente cargado para editar");
+};
+
+const eliminarCliente = (id) => {
+  if (!confirm("¿Estás seguro de eliminar este cliente?")) return;
+
+  state.clientes = state.clientes.filter((c) => c.id !== id);
+  // También eliminar oportunidades y actividades relacionadas
+  state.opps = state.opps.filter((o) => o.clienteId !== id);
+  state.acts = state.acts.filter((a) => a.clienteId !== id);
+
+  persist();
+  renderClientes();
+  renderOpps();
+  renderActs();
+  toast("Cliente eliminado");
 };
 
 $$("#clienteForm").addEventListener("submit", (e) => {
@@ -62,8 +100,9 @@ $$("#clienteForm").addEventListener("submit", (e) => {
     );
   }
 
+  const id = $$("#clienteId").value || Date.now() + "";
   const obj = {
-    id: Date.now() + "",
+    id: id,
     nombre: $$("#cNombre").value.trim(),
     email: $$("#cEmail").value.trim(),
     rfc: $$("#cRfc").value.trim(),
@@ -71,13 +110,26 @@ $$("#clienteForm").addEventListener("submit", (e) => {
     telefono: $$("#cTelefono").value.trim(),
     razon: $$("#cRazon").value.trim(),
   };
-  state.clientes.push(obj);
+
+  if ($$("#clienteId").value) {
+    // Editar cliente existente
+    const index = state.clientes.findIndex((c) => c.id === id);
+    if (index !== -1) {
+      state.clientes[index] = obj;
+      toast("Cliente actualizado");
+    }
+  } else {
+    // Nuevo cliente
+    state.clientes.push(obj);
+    toast("Cliente agregado");
+  }
+
   persist();
   renderClientes();
   renderOpps();
   renderActs();
-  toast("Cliente agregado");
   e.target.reset();
+  $$("#clienteId").value = "";
 });
 
 // ===== CRUD Oportunidades =====
@@ -86,19 +138,50 @@ const renderOpps = () => {
     .map(
       (o) =>
         `<tr>
-      <td>${
-        state.clientes.find((c) => c.id === o.clienteId)?.nombre || "?"
-      }</td>
-      <td>${o.titulo}</td>
-      <td>${o.monto}</td>
-      <td>${o.tipo}</td>
-      <td>${o.descripcion}</td>
-    </tr>`
+                <td>${
+                  state.clientes.find((c) => c.id === o.clienteId)?.nombre ||
+                  "?"
+                }</td>
+                <td>${o.titulo}</td>
+                <td>${o.monto}</td>
+                <td>${o.tipo}</td>
+                <td>${o.descripcion}</td>
+                <td class="acciones-tabla">
+                    <button class="btn edit btn-tabla" onclick="editarOpp('${
+                      o.id
+                    }')">Editar</button>
+                    <button class="btn danger btn-tabla" onclick="eliminarOpp('${
+                      o.id
+                    }')">Eliminar</button>
+                </td>
+            </tr>`
     )
     .join("");
   $$("#oCliente").innerHTML = state.clientes
     .map((c) => `<option value="${c.id}">${c.nombre}</option>`)
     .join("");
+};
+
+const editarOpp = (id) => {
+  const opp = state.opps.find((o) => o.id === id);
+  if (!opp) return;
+
+  $$("#oCliente").value = opp.clienteId;
+  $$("#oTitulo").value = opp.titulo;
+  $$("#oMonto").value = opp.monto;
+  $$("#oTipo").value = opp.tipo;
+  $$("#oDesc").value = opp.descripcion;
+
+  toast("Oportunidad cargada para editar");
+};
+
+const eliminarOpp = (id) => {
+  if (!confirm("¿Estás seguro de eliminar esta oportunidad?")) return;
+
+  state.opps = state.opps.filter((o) => o.id !== id);
+  persist();
+  renderOpps();
+  toast("Oportunidad eliminada");
 };
 
 $$("#oppForm").addEventListener("submit", (e) => {
@@ -133,14 +216,23 @@ const renderActs = () => {
     .map(
       (a) =>
         `<tr>
-      <td>${a.tipo}</td>
-      <td>${
-        state.clientes.find((c) => c.id === a.clienteId)?.nombre || "?"
-      }</td>
-      <td>${a.notas}</td>
-      <td>${a.tipoCliente}</td>
-      <td>${a.descCliente}</td>
-    </tr>`
+                <td>${a.tipo}</td>
+                <td>${
+                  state.clientes.find((c) => c.id === a.clienteId)?.nombre ||
+                  "?"
+                }</td>
+                <td>${a.notas}</td>
+                <td>${a.tipoCliente}</td>
+                <td>${a.descCliente}</td>
+                <td class="acciones-tabla">
+                    <button class="btn edit btn-tabla" onclick="editarAct('${
+                      a.id
+                    }')">Editar</button>
+                    <button class="btn danger btn-tabla" onclick="eliminarAct('${
+                      a.id
+                    }')">Eliminar</button>
+                </td>
+            </tr>`
     )
     .join("");
   $$("#aCliente").innerHTML = state.clientes
@@ -149,6 +241,28 @@ const renderActs = () => {
   $$("#csatCliente").innerHTML = state.clientes
     .map((c) => `<option value="${c.id}">${c.nombre}</option>`)
     .join("");
+};
+
+const editarAct = (id) => {
+  const act = state.acts.find((a) => a.id === id);
+  if (!act) return;
+
+  $$("#aTipo").value = act.tipo;
+  $$("#aCliente").value = act.clienteId;
+  $$("#aTipoCliente").value = act.tipoCliente;
+  $$("#aDescCliente").value = act.descCliente;
+  $$("#aNotas").value = act.notas;
+
+  toast("Actividad cargada para editar");
+};
+
+const eliminarAct = (id) => {
+  if (!confirm("¿Estás seguro de eliminar esta actividad?")) return;
+
+  state.acts = state.acts.filter((a) => a.id !== id);
+  persist();
+  renderActs();
+  toast("Actividad eliminada");
 };
 
 $$("#actForm").addEventListener("submit", (e) => {
@@ -201,7 +315,51 @@ $$("#btnEnviarCsat").addEventListener("click", async () => {
   toast("CSAT enviado a n8n");
 });
 
+// ===== Chat =====
+const chatToggle = document.getElementById("chat-toggle");
+const chatBox = document.getElementById("chat-box");
+const chatMessages = document.getElementById("chat-messages");
+const chatInput = document.getElementById("chat-input");
+const sendBtn = document.getElementById("send-btn");
+
+chatToggle.addEventListener("click", () => {
+  chatBox.classList.toggle("show");
+});
+
+sendBtn.addEventListener("click", sendMessage);
+chatInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
+
+function sendMessage() {
+  const text = chatInput.value.trim();
+  if (text === "") return;
+
+  // Mensaje del usuario
+  const userMsg = document.createElement("div");
+  userMsg.classList.add("msg", "user");
+  userMsg.textContent = text;
+  chatMessages.appendChild(userMsg);
+
+  chatInput.value = "";
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // Respuesta automática simple
+  setTimeout(() => {
+    const botMsg = document.createElement("div");
+    botMsg.classList.add("msg", "bot");
+    botMsg.textContent = "Gracias por tu mensaje, pronto te responderemos. ☀️";
+    chatMessages.appendChild(botMsg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }, 800);
+}
+
 // ===== Init =====
 renderClientes();
 renderOpps();
 renderActs();
+
+// Agregar marca de agua a las tablas
+$$$("table").forEach((table) => {
+  table.classList.add("table-watermark");
+});
