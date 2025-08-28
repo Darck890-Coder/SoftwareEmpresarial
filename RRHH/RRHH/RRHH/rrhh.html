@@ -1,54 +1,121 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Agente Recursos Humanos- Refrescos DelSol</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Agente Recursos Humanos - Refrescos DelSol</title>
   <link rel="stylesheet" href="RHRHH.CSS">
 </head>
 <body>
-  <header>
-    <h1>Chatbot Recursos Humanos</h1>
-    <div class="controls">
-      <input id="employeeId" type="text" placeholder="ID empleado">
-      <input id="employeeName" type="text" placeholder="Nombre">
-      <button id="saveProfile">Guardar Perfil</button>
-      <button id="toggleDemo">Modo demo</button>
-      <button id="toggleTheme">🌙</button>
-    </div>
-  </header>
+  <div class="app">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="bot-avatar-sm"></div>
+        <div class="brand-text">
+          <h1>Chatbot Recursos Humanos</h1>
+          <span class="presence"><span class="dot"></span> En línea</span>
+        </div>
+        </div>
 
-  <main id="chat-container">
-    <div id="chat-box"></div>
-  </main>
+      <div class="controls">
+        <button id="openEmployeeForm" class="btn icon" title="Registrar Empleado">👤</button>
+        <button id="viewEmployees" class="btn icon" title="Ver Empleados">👥</button>
+        <button id="toggleTheme" class="btn icon" title="Cambiar tema">🌙</button>
+      </div>
+    </header>
 
-  <footer>
-    <div class="actions">
-      <button onclick="openModal('register')">➕ Alta empleado</button>
-      <button onclick="openModal('vacation')">🌴 Vacaciones</button>
-      <button onclick="openModal('permission')">📝 Permiso</button>
-      <button onclick="sendAction('weekly_report')">📊 Reporte</button>
-      <button onclick="sendAction('clock_in')">🟢 Entrada</button>
-      <button onclick="sendAction('clock_out')">🔴 Salida</button>
-    </div>
-    <div class="message-box">
-      <input id="userInput" type="text" placeholder="Escribe un mensaje...">
-      <button id="sendBtn">Enviar</button>
-    </div>
-  </footer>
+    <!-- Chat -->
+    <main id="chat-container" class="chat-container">
+      <div id="chat-box" class="chat-box"></div>
+    </main>
 
-  <!-- Modales -->
-  <div id="modal" class="modal hidden">
-    <div class="modal-content">
-      <h2 id="modal-title"></h2>
-      <form id="modal-form"></form>
-      <div class="modal-actions">
-        <button type="button" onclick="closeModal()">Cancelar</button>
-        <button type="submit" form="modal-form">Enviar</button>
+    <!-- Composer -->
+    <footer class="composer">
+      <div class="composer-inner">
+        <input id="userInput" type="text" placeholder="Escribe un mensaje " aria-label="Mensaje">
+        <button id="sendBtn" class="btn send">Enviar ➤</button>
+      </div>
+     
+    </footer>
+
+    <!-- Modal Lista de Empleados -->
+    <div id="employeesModal" class="modal hidden">
+      <div class="modal-content employees-modal">
+        <div class="modal-header">
+          <h2>👥 Lista de Empleados</h2>
+          <button id="closeEmployeesModal" class="btn-close">&times;</button>
+        </div>
+        
+        <div class="employees-container">
+          <div class="employees-header">
+            <div class="employees-stats">
+              <span id="employeeCount">Cargando...</span>
+            </div>
+            <button id="refreshEmployees" class="btn btn-refresh">🔄 Actualizar</button>
+          </div>
+          
+          <div id="employeesLoading" class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Cargando empleados...</p>
+          </div>
+          
+          <div id="employeesList" class="employees-list"></div>
+          
+          <div id="employeesError" class="error-container hidden">
+            <p>❌ Error al cargar empleados</p>
+            <button id="retryLoad" class="btn btn-retry">Reintentar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Formulario Empleado -->
+    <div id="employeeModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>📝 Registrar Nuevo Empleado</h2>
+          <button id="closeModal" class="btn-close">&times;</button>
+        </div>
+        
+        <form id="employeeForm" class="employee-form">
+          <div class="form-group">
+            <label for="nombre">Nombre *</label>
+            <input type="text" id="nombre" name="nombre" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="apellido">Apellido *</label>
+            <input type="text" id="apellido" name="apellido" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="correo">Correo Electrónico *</label>
+            <input type="email" id="correo" name="correo" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="telefono">Número de Teléfono *</label>
+            <input type="tel" id="telefono" name="telefono" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="direccion">Dirección *</label>
+            <textarea id="direccion" name="direccion" rows="3" required></textarea>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" id="cancelForm" class="btn btn-cancel">Cancelar</button>
+            <button type="submit" id="submitForm" class="btn btn-submit">
+              <span class="submit-text">Guardar Empleado</span>
+              <span class="loading hidden">Guardando...</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 
-  <script src="RRHH.JS"></script>
+  <script src="rrhh.js"></script>
 </body>
 </html>

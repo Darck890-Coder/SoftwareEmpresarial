@@ -1,312 +1,527 @@
+// URL del webhook de n8n
 const N8N_WEBHOOK_URL = "https://dev-academy.n8n.itelisoft.org/webhook/RecursosHumanos";
 
-// Estado de la app
-let demoMode = false;  // Cambiar a false para permitir envíos a n8n
-let profile = { id: "", name: "" };
+// Configuración de Supabase - REEMPLAZA CON TUS DATOS REALES
+const SUPABASE_URL = "https://buplrfnkqevhxeprikoi.supabase.co"; // Reemplaza con tu URL de Supabase
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1cGxyZm5rcWV2aHhlcHJpa29pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA1NzE1NjksImV4cCI6MjA0NjE0NzU2OX0.-mfJyfNvEDzAxSqJqfUSwlMWLDfO-ac__QfpiuX6VDo"; // Reemplaza con tu clave anónima
+const TABLA_EMPLEADOS = "Empleados_alta"; // Nombre de tu tabla en Supabase
 
-// Elementos
+// Elementos DOM
 const chatBox = document.getElementById("chat-box");
+const chatContainer = document.getElementById("chat-container");
 const userInput = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
 
-// Enviar mensaje manual
-sendBtn.addEventListener("click", () => sendMessage(userInput.value));
-userInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") sendMessage(userInput.value);
-});
+// Elementos del modal
+const openFormBtn = document.getElementById("openEmployeeForm");
+const modal = document.getElementById("employeeModal");
+const closeModalBtn = document.getElementById("closeModal");
+const cancelFormBtn = document.getElementById("cancelForm");
+const employeeForm = document.getElementById("employeeForm");
+const submitBtn = document.getElementById("submitForm");
 
-// Guardar perfil
-document.getElementById("saveProfile").addEventListener("click", () => {
-  profile.id = document.getElementById("employeeId").value;
-  profile.name = document.getElementById("employeeName").value;
-  addMessage("Perfil guardado.", "bot");
-});
+// Elemento del botón de tema
+const themeBtn = document.getElementById("toggleTheme");
 
-// Cambiar tema
-document.getElementById("toggleTheme").addEventListener("click", () => {
-  document.body.classList.toggle("dark");
-});
+// Elementos de la vista de empleados
+const viewEmployeesBtn = document.getElementById("viewEmployees");
+const employeesModal = document.getElementById("employeesModal");
+const closeEmployeesModalBtn = document.getElementById("closeEmployeesModal");
+const refreshEmployeesBtn = document.getElementById("refreshEmployees");
+const retryLoadBtn = document.getElementById("retryLoad");
 
-// Activar/desactivar modo demo
-document.getElementById("toggleDemo").addEventListener("click", () => {
-  demoMode = !demoMode;
-  const message = `Modo demo: ${demoMode ? "Activado" : "Desactivado"}`;
-  addMessage(message, "bot");
-  console.log("=== MODO DEMO CAMBIADO ===");
-  console.log("Estado actual:", demoMode);
-  console.log("URL n8n:", N8N_WEBHOOK_URL);
-});
-
-// Verificar estado inicial al cargar
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("=== CONFIGURACIÓN INICIAL ===");
-  console.log("Modo demo:", demoMode);
-  console.log("URL n8n:", N8N_WEBHOOK_URL);
-  console.log("Perfil:", profile);
+// Función para hacer scroll automático
+function scrollToBottom() {
+  const container = chatContainer || chatBox;
   
-  addMessage("Sistema iniciado. Verifica que el modo demo esté desactivado para enviar a n8n.", "bot");
-});
-
-// Función para testear conexión con n8n
-async function testConnection() {
-  addMessage("🔄 Probando conexión con n8n...", "bot");
+  // Múltiples intentos para asegurar el scroll
+  setTimeout(() => {
+    container.scrollTop = container.scrollHeight;
+  }, 10);
   
-  const testData = {
-    profile: profile,
-    event: "test_connection",
-    payload: { 
-      message: "Test de conexión desde el chatbot",
-      timestamp: new Date().toISOString(),
-      test: true
-    },
-    timestamp: new Date().toISOString()
-  };
+  setTimeout(() => {
+    container.scrollTop = container.scrollHeight;
+  }, 100);
+  
+  // También usar smooth scroll como respaldo
+  setTimeout(() => {
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth'
+    });
+  }, 200);
+}
 
-  console.log("=== TEST DE CONEXIÓN ===");
-  console.log("URL de prueba:", N8N_WEBHOOK_URL);
-  console.log("Datos de prueba:", JSON.stringify(testData, null, 2));
+// Función para agregar mensajes al chat
+function addMessage(text, sender = "bot") {
+  const msg = document.createElement("div");
+  msg.className = `msg ${sender}`;
 
+  if (sender === "bot") {
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    msg.appendChild(avatar);
+  }
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = text;
+
+  msg.appendChild(bubble);
+  chatBox.appendChild(msg);
+  
+  // Forzar scroll inmediato y después con delay
+  const container = chatContainer || chatBox;
+  container.scrollTop = container.scrollHeight;
+  scrollToBottom();
+}
+
+// Animación de "escribiendo"
+let typingEl = null;
+function showTyping() {
+  if (typingEl) return;
+  typingEl = document.createElement("div");
+  typingEl.className = "msg bot";
+  typingEl.innerHTML = `
+    <div class="avatar"></div>
+    <div class="bubble typing">
+      <span class="dot-typing"></span>
+    </div>`;
+  chatBox.appendChild(typingEl);
+  scrollToBottom();
+}
+
+function hideTyping() {
+  if (typingEl) { 
+    typingEl.remove(); 
+    typingEl = null; 
+  }
+}
+
+// Función para enviar mensaje a n8n
+async function sendToN8N(message) {
   try {
-    const res = await fetch(N8N_WEBHOOK_URL, {
+    showTyping();
+
+    const response = await fetch(N8N_WEBHOOK_URL, {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
+      headers: {
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify(testData),
+      body: JSON.stringify({ message: message })
     });
 
-    console.log("Status de respuesta:", res.status);
-    console.log("Headers de respuesta:", Object.fromEntries(res.headers.entries()));
+    hideTyping();
 
-    if (res.ok) {
-      try {
-        const result = await res.json();
-        console.log("Respuesta JSON:", result);
-        addMessage("✅ Conexión exitosa con n8n", "bot");
-        addMessage(`📡 Status: ${res.status} | Respuesta: ${JSON.stringify(result)}`, "bot");
-      } catch (jsonError) {
-        console.log("Respuesta no es JSON válido");
-        const text = await res.text();
-        console.log("Respuesta como texto:", text);
-        addMessage("✅ Conexión exitosa (respuesta no-JSON)", "bot");
-      }
+    const result = await response.text();
+    let botResponse;
+    
+    try {
+      botResponse = JSON.parse(result);
+    } catch {
+      botResponse = result;
+    }
+
+    // Mostrar respuesta del bot
+    if (typeof botResponse === "string") {
+      addMessage(botResponse, "bot");
+    } else if (botResponse && (botResponse.message || botResponse.text || botResponse.response)) {
+      addMessage(botResponse.message || botResponse.text || botResponse.response, "bot");
     } else {
-      const errorText = await res.text();
-      console.log("Error response:", errorText);
-      addMessage(`❌ Error de conexión: ${res.status} - ${res.statusText}`, "bot");
+      addMessage("Mensaje procesado correctamente", "bot");
     }
   } catch (error) {
-    console.error("Error de red:", error);
-    addMessage(`❌ Error de red: ${error.message}`, "bot");
+    hideTyping();
+    addMessage("Error de conexión con el bot", "bot");
   }
 }
 
-// Agregar comando de test en el chat
-function handleSpecialCommands(text) {
-  if (text.toLowerCase() === '/test') {
-    testConnection();
-    return true;
-  }
-  if (text.toLowerCase() === '/status') {
-    addMessage(`📊 Estado actual:
-- Modo demo: ${demoMode ? 'Activado' : 'Desactivado'}
-- URL n8n: ${N8N_WEBHOOK_URL}
-- Perfil: ${profile.name || 'Sin configurar'} (${profile.id || 'Sin ID'})`, "bot");
-    return true;
-  }
-  return false;
-}
+// Función para enviar mensaje
+function sendMessage() {
+  const message = userInput.value.trim();
+  if (!message) return;
 
-// Agregar botón de test (opcional)
-// Puedes descomentar esto si quieres un botón de test
-/*
-document.addEventListener("DOMContentLoaded", () => {
-  const testBtn = document.createElement("button");
-  testBtn.textContent = "Test n8n";
-  testBtn.onclick = testConnection;
-  document.body.appendChild(testBtn);
-});
-*/
-
-// Enviar acción rápida
-function sendAction(event, payload = {}) {
-  const msg = `Acción: ${event}`;
-  addMessage(msg, "user");
-  sendToN8N(event, payload);
-}
-
-// Enviar mensaje libre
-function sendMessage(text) {
-  if (!text.trim()) return;
-  
-  addMessage(text, "user");
+  // Mostrar mensaje del usuario
+  addMessage(message, "user");
   userInput.value = "";
-  
-  // Verificar comandos especiales
-  if (handleSpecialCommands(text.trim())) {
-    return;
-  }
-  
-  // Enviar con más contexto para el flujo de n8n
-  const payload = { 
-    text: text.trim(),
-    messageType: "chat",
-    userId: profile.id || "guest",
-    userName: profile.name || "Usuario",
-    timestamp: new Date().toISOString()
-  };
-  
-  sendToN8N("chat_message", payload);
+
+  // Enviar a n8n
+  sendToN8N(message);
 }
 
-// Mostrar mensajes en pantalla
-function addMessage(text, sender = "bot") {
-  const div = document.createElement("div");
-  div.className = `message ${sender}`;
-  div.textContent = text;
-  chatBox.appendChild(div);
-  chatBox.scrollTop = chatBox.scrollHeight;
+// Event listeners
+sendBtn.addEventListener("click", sendMessage);
+userInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
+
+// Event listeners del modal
+openFormBtn.addEventListener("click", mostrarModal);
+closeModalBtn.addEventListener("click", ocultarModal);
+cancelFormBtn.addEventListener("click", ocultarModal);
+employeeForm.addEventListener("submit", manejarEnvioFormulario);
+
+// Event listener del botón de tema
+themeBtn.addEventListener("click", toggleTheme);
+
+// Event listeners de la vista de empleados
+viewEmployeesBtn.addEventListener("click", mostrarVistaEmpleados);
+closeEmployeesModalBtn.addEventListener("click", ocultarVistaEmpleados);
+refreshEmployeesBtn.addEventListener("click", cargarEmpleados);
+retryLoadBtn.addEventListener("click", cargarEmpleados);
+
+// Cerrar modal al hacer clic fuera
+modal.addEventListener("click", (e) => {
+  if (e.target === modal) ocultarModal();
+});
+
+employeesModal.addEventListener("click", (e) => {
+  if (e.target === employeesModal) ocultarVistaEmpleados();
+});
+
+// ===== FUNCIONES DE TEMA =====
+
+// Función para alternar tema
+function toggleTheme() {
+  console.log("🌙 Cambiando tema...");
+  
+  // Alternar clase dark en el body
+  document.body.classList.toggle("dark");
+  
+  // Verificar si está en modo oscuro
+  const isDarkMode = document.body.classList.contains("dark");
+  
+  // Cambiar el ícono del botón
+  themeBtn.textContent = isDarkMode ? "☀️" : "🌙";
+  
+  // Guardar preferencia en localStorage
+  localStorage.setItem("darkMode", isDarkMode ? "true" : "false");
+  
+  console.log(`🎨 Tema cambiado a: ${isDarkMode ? "Oscuro" : "Claro"}`);
+  
+  
 }
 
-// Enviar al webhook de n8n
-async function sendToN8N(event, payload) {
-  const data = { 
-    profile, 
-    event, 
-    payload,
-    timestamp: new Date().toISOString()
-  };
-
-  console.log("=== DEBUG N8N ===");
-  console.log("URL:", N8N_WEBHOOK_URL);
-  console.log("Modo demo:", demoMode);
-  console.log("Datos a enviar:", JSON.stringify(data, null, 2));
-
-  if (demoMode) {
-    console.log("Ejecutando en modo DEMO - no se envía a n8n");
-    setTimeout(() => {
-      addMessage(`[DEMO] Respuesta para ${event}`, "bot");
-    }, 600);
-    return;
+// Función para cargar tema guardado
+function loadSavedTheme() {
+  const savedTheme = localStorage.getItem("darkMode");
+  
+  if (savedTheme === "true") {
+    document.body.classList.add("dark");
+    themeBtn.textContent = "☀️";
+    console.log("🌙 Tema oscuro cargado desde localStorage");
+  } else {
+    document.body.classList.remove("dark");
+    themeBtn.textContent = "🌙";
+    console.log("☀️ Tema claro cargado desde localStorage");
   }
+}
 
-  // Mostrar mensaje de "escribiendo..."
-  const typingDiv = document.createElement("div");
-  typingDiv.className = "message bot typing";
-  typingDiv.textContent = "Escribiendo...";
-  typingDiv.id = "typing-indicator";
-  chatBox.appendChild(typingDiv);
-  chatBox.scrollTop = chatBox.scrollHeight;
+// ===== FUNCIONES DE VISTA DE EMPLEADOS =====
 
+// Mostrar vista de empleados
+function mostrarVistaEmpleados() {
+  console.log("👥 Abriendo vista de empleados");
+  employeesModal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  cargarEmpleados();
+}
+
+// Ocultar vista de empleados
+function ocultarVistaEmpleados() {
+  console.log("❌ Cerrando vista de empleados");
+  employeesModal.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+}
+
+// Función para obtener empleados de Supabase
+async function obtenerEmpleadosSupabase() {
   try {
-    console.log("Iniciando petición a n8n...");
+    console.log("🔄 Obteniendo empleados de Supabase...");
     
-    const res = await fetch(N8N_WEBHOOK_URL, {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify(data),
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLA_EMPLEADOS}?select=*&order=created_at.desc`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      }
     });
 
-    console.log("Respuesta HTTP status:", res.status);
-    console.log("Respuesta HTTP headers:", res.headers);
-
-    // Remover indicador de escritura
-    const typingIndicator = document.getElementById("typing-indicator");
-    if (typingIndicator) {
-      typingIndicator.remove();
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("❌ Error en respuesta de Supabase:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
 
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status} - ${res.statusText}`);
-    }
+    const empleados = await response.json();
+    console.log("✅ Empleados obtenidos exitosamente:", empleados);
+    return { success: true, data: empleados };
 
-    // Leer la respuesta como texto primero, luego intentar parsear como JSON
-    const responseText = await res.text();
-    console.log("Respuesta cruda de n8n:", responseText);
+  } catch (error) {
+    console.error("❌ Error al obtener empleados:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Cargar y mostrar empleados
+async function cargarEmpleados() {
+  console.log("📋 Cargando lista de empleados...");
+  
+  const loadingEl = document.getElementById('employeesLoading');
+  const listEl = document.getElementById('employeesList');
+  const errorEl = document.getElementById('employeesError');
+  const countEl = document.getElementById('employeeCount');
+  
+  // Mostrar loading
+  loadingEl.classList.remove('hidden');
+  listEl.innerHTML = '';
+  errorEl.classList.add('hidden');
+  
+  try {
+    const resultado = await obtenerEmpleadosSupabase();
     
-    let result;
-    try {
-      result = JSON.parse(responseText);
-      console.log("Respuesta parseada como JSON:", result);
-    } catch (parseError) {
-      result = responseText;
-      console.log("Usando respuesta como texto plano:", result);
-    }
+    loadingEl.classList.add('hidden');
     
-    // Manejar diferentes tipos de respuesta
-    if (typeof result === 'string') {
-      // Es texto plano - remover comillas si las tiene
-      const cleanText = result.replace(/^"(.*)"$/, '$1');
-      addMessage(cleanText, "bot");
-    } else if (result && (result.message || result.text || result.response)) {
-      // Es JSON con propiedades específicas
-      addMessage(result.message || result.text || result.response, "bot");
-    } else if (result && typeof result === 'object') {
-      // Es JSON pero sin propiedades conocidas, convertir a string
-      addMessage(JSON.stringify(result), "bot");
+    if (resultado.success) {
+      const empleados = resultado.data;
+      
+      // Actualizar contador
+      countEl.textContent = `${empleados.length} empleado${empleados.length !== 1 ? 's' : ''} registrado${empleados.length !== 1 ? 's' : ''}`;
+      
+      if (empleados.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state">
+            <h3>👤 No hay empleados registrados</h3>
+            <p>Utiliza el botón "👤" para registrar el primer empleado.</p>
+          </div>
+        `;
+      } else {
+        listEl.innerHTML = empleados.map(empleado => crearTarjetaEmpleado(empleado)).join('');
+      }
+      
+      console.log(`✅ ${empleados.length} empleados mostrados`);
+      
     } else {
-      console.log("Respuesta sin mensaje específico, mostrando confirmación");
-      addMessage("✅ Mensaje enviado correctamente a n8n", "bot");
+      throw new Error(resultado.error);
     }
     
-  } catch (err) {
-    console.error("ERROR completo:", err);
-    console.error("Error stack:", err.stack);
-    
-    // Remover indicador de escritura en caso de error
-    const typingIndicator = document.getElementById("typing-indicator");
-    if (typingIndicator) {
-      typingIndicator.remove();
-    }
-    
-    addMessage(`❌ Error: ${err.message}`, "bot");
+  } catch (error) {
+    console.error("💥 Error al cargar empleados:", error);
+    loadingEl.classList.add('hidden');
+    errorEl.classList.remove('hidden');
+    countEl.textContent = 'Error al cargar';
   }
 }
 
-// ----- Manejo de Modales -----
-function openModal(type) {
-  const modal = document.getElementById("modal");
-  const form = document.getElementById("modal-form");
-  const title = document.getElementById("modal-title");
-  form.innerHTML = "";
+// Crear tarjeta de empleado
+function crearTarjetaEmpleado(empleado) {
+  const iniciales = (empleado.nombre.charAt(0) + empleado.apellido.charAt(0)).toUpperCase();
+  const fechaFormateada = formatearFecha(empleado.created_at);
+  
+  return `
+    <div class="employee-card">
+      <div class="employee-header">
+        <div class="employee-avatar">${iniciales}</div>
+        <div class="employee-info">
+          <h3>${empleado.nombre} ${empleado.apellido}</h3>
+          <span class="employee-id">ID: ${empleado.id}</span>
+        </div>
+      </div>
+      
+      <div class="employee-details">
+        <div class="employee-detail">
+          <span class="detail-icon">📧</span>
+          <span class="detail-text">${empleado.correo}</span>
+        </div>
+        
+        <div class="employee-detail">
+          <span class="detail-icon">📞</span>
+          <span class="detail-text">${empleado.telefono}</span>
+        </div>
+        
+        <div class="employee-detail">
+          <span class="detail-icon">📍</span>
+          <span class="detail-text">${empleado.direccion}</span>
+        </div>
+      </div>
+      
+      <div class="employee-date">
+        📅 Registrado: ${fechaFormateada}
+      </div>
+    </div>
+  `;
+}
 
-  if (type === "register") {
-    title.textContent = "Alta de empleado";
-    form.innerHTML = `
-      <input name="id" placeholder="ID">
-      <input name="name" placeholder="Nombre">
-      <input name="role" placeholder="Puesto">
-      <input name="area" placeholder="Área">
-      <input type="date" name="date">
-    `;
-  } else if (type === "vacation") {
-    title.textContent = "Solicitud de vacaciones";
-    form.innerHTML = `
-      <input type="date" name="from">
-      <input type="date" name="to">
-    `;
-  } else if (type === "permission") {
-    title.textContent = "Solicitud de permiso";
-    form.innerHTML = `
-      <input name="reason" placeholder="Motivo">
-      <input type="date" name="date">
-    `;
+// Formatear fecha
+function formatearFecha(fechaISO) {
+  const fecha = new Date(fechaISO);
+  return fecha.toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+// ===== FUNCIONES DE SUPABASE =====
+
+// Función para guardar empleado en Supabase
+async function guardarEmpleadoSupabase(empleado) {
+  try {
+    console.log("🔄 Iniciando guardado en Supabase...", empleado);
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLA_EMPLEADOS}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(empleado)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("❌ Error en respuesta de Supabase:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      });
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log("✅ Empleado guardado exitosamente:", result);
+    return { success: true, data: result };
+
+  } catch (error) {
+    console.error("❌ Error al guardar empleado:", error);
+    return { success: false, error: error.message };
   }
-
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    const payload = Object.fromEntries(new FormData(form).entries());
-    sendAction(type === "register" ? "employee_register" : `${type}_request`, payload);
-    closeModal();
-  };
-
-  modal.classList.remove("hidden");
 }
 
-function closeModal() {
-  document.getElementById("modal").classList.add("hidden");
+// ===== FUNCIONES DEL MODAL =====
+
+// Mostrar modal
+function mostrarModal() {
+  console.log("📝 Abriendo formulario de empleado");
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
 }
+
+// Ocultar modal
+function ocultarModal() {
+  console.log("❌ Cerrando formulario de empleado");
+  modal.classList.add('hidden');
+  document.body.style.overflow = 'auto';
+  limpiarFormulario();
+}
+
+// Limpiar formulario
+function limpiarFormulario() {
+  employeeForm.reset();
+  setLoadingState(false);
+}
+
+// Estado de carga del botón
+function setLoadingState(loading) {
+  const submitText = submitBtn.querySelector('.submit-text');
+  const loadingText = submitBtn.querySelector('.loading');
+  
+  if (loading) {
+    submitBtn.classList.add('loading');
+    submitBtn.disabled = true;
+    submitText.classList.add('hidden');
+    loadingText.classList.remove('hidden');
+  } else {
+    submitBtn.classList.remove('loading');
+    submitBtn.disabled = false;
+    submitText.classList.remove('hidden');
+    loadingText.classList.add('hidden');
+  }
+}
+
+// Validar formulario
+function validarFormulario(formData) {
+  const errores = [];
+  
+  if (!formData.nombre.trim()) errores.push("El nombre es requerido");
+  if (!formData.apellido.trim()) errores.push("El apellido es requerido");
+  if (!formData.correo.trim()) errores.push("El correo es requerido");
+  if (!formData.telefono.trim()) errores.push("El teléfono es requerido");
+  if (!formData.direccion.trim()) errores.push("La dirección es requerida");
+  
+  // Validar formato de email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (formData.correo && !emailRegex.test(formData.correo)) {
+    errores.push("El formato del correo no es válido");
+  }
+  
+  return errores;
+}
+
+// Manejar envío del formulario
+async function manejarEnvioFormulario(e) {
+  e.preventDefault();
+  
+  console.log("📋 Procesando envío de formulario...");
+  setLoadingState(true);
+  
+  try {
+    // Recopilar datos del formulario (solo los campos requeridos)
+    const formData = {
+      nombre: document.getElementById('nombre').value.trim(),
+      apellido: document.getElementById('apellido').value.trim(),
+      correo: document.getElementById('correo').value.trim(),
+      telefono: document.getElementById('telefono').value.trim(),
+      direccion: document.getElementById('direccion').value.trim()
+      // No incluir id ni fecha ya que son automáticos
+    };
+    
+    console.log("📊 Datos del formulario:", formData);
+    
+    // Validar datos
+    const errores = validarFormulario(formData);
+    if (errores.length > 0) {
+      console.warn("⚠️ Errores de validación:", errores);
+      alert("Errores de validación:\n" + errores.join("\n"));
+      setLoadingState(false);
+      return;
+    }
+    
+    // Guardar en Supabase
+    const resultado = await guardarEmpleadoSupabase(formData);
+    
+    if (resultado.success) {
+      console.log("🎉 Empleado registrado exitosamente");
+      alert("✅ Empleado registrado exitosamente");
+      addMessage(`✅ Nuevo empleado registrado: ${formData.nombre} ${formData.apellido}`, "bot");
+      ocultarModal();
+    } else {
+      console.error("💥 Error al registrar empleado:", resultado.error);
+      alert("❌ Error al registrar empleado: " + resultado.error);
+    }
+    
+  } catch (error) {
+    console.error("💥 Error inesperado:", error);
+    alert("❌ Error inesperado: " + error.message);
+  } finally {
+    setLoadingState(false);
+  }
+}
+
+// Mensaje inicial
+document.addEventListener("DOMContentLoaded", () => {
+  // Cargar tema guardado primero
+  loadSavedTheme();
+  
+  // Mostrar mensaje inicial
+  addMessage("🤖 Chatbot de Recursos Humanos iniciado", "bot");
+});
