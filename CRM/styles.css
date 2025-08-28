@@ -107,6 +107,7 @@ nav.tabs {
   font-size: 22px;
   background: linear-gradient(90deg, #ffb703, #fb8500);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
