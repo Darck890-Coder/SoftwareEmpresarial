@@ -14,7 +14,7 @@
         <div class="bot-avatar-sm"></div>
         <div class="brand-text">
           <h1>Chatbot Recursos Humanos</h1>
-          <span class="presence"><span class="dot"></span> En línea</span>
+          <span class="presence"><span class="dot"></span> En línea</span> 
         </div>
         </div>
 
@@ -23,7 +23,9 @@
         <button id="viewEmployees" class="btn icon" title="Ver Empleados">👥</button>
         <button id="permissionsBtn" class="btn icon" title="Registrar Permiso">📝</button>
         <button id="vacationsBtn" class="btn icon" title="Asignar Vacaciones">🏖️</button>
-        <button id="toggleTheme" class="btn icon" title="Cambiar tema">🌙</button>
+        <button id="managePermissionsBtn" class="btn icon" title="Gestionar Permisos">📋</button>
+        <button id="manageVacationsBtn" class="btn icon" title="Gestionar Vacaciones">📊</button>
+        <button id="toggleTheme" class="btn icon" title="Cambiar Tema">🌙</button>
       </div>
     </header>
 
@@ -81,29 +83,36 @@
         </div>
         
         <form id="employeeForm" class="employee-form">
+          <div class="form-progress"></div>
+          
           <div class="form-group">
             <label for="name">Nombre *</label>
-            <input type="text" id="name" name="name" required>
+            <input type="text" id="name" name="name" placeholder="Ingresa el nombre" required>
+            <span class="validation-check">✓</span>
           </div>
           
           <div class="form-group">
             <label for="surname">Apellido *</label>
-            <input type="text" id="surname" name="surname" required>
+            <input type="text" id="surname" name="surname" placeholder="Ingresa el apellido" required>
+            <span class="validation-check">✓</span>
           </div>
           
           <div class="form-group">
             <label for="email">Correo Electrónico *</label>
-            <input type="email" id="email" name="email" required>
+            <input type="email" id="email" name="email" placeholder="ejemplo@correo.com" required>
+            <span class="validation-check">✓</span>
           </div>
           
           <div class="form-group">
             <label for="phone">Número de Teléfono *</label>
-            <input type="tel" id="phone" name="phone" required>
+            <input type="tel" id="phone" name="phone" placeholder="+1 234 567 8900" required>
+            <span class="validation-check">✓</span>
           </div>
           
           <div class="form-group">
             <label for="address">Dirección *</label>
-            <textarea id="address" name="address" rows="3" required></textarea>
+            <textarea id="address" name="address" rows="3" placeholder="Ingresa la dirección completa" required></textarea>
+            <span class="validation-check">✓</span>
           </div>
           
           <div class="form-actions">
@@ -302,6 +311,120 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal Gestionar Permisos -->
+    <div id="managePermissionsModal" class="modal hidden">
+      <div class="modal-content manage-modal">
+        <div class="modal-header">
+          <h2>📋 Gestionar Permisos</h2>
+          <button id="closeManagePermissionsModal" class="btn-close">&times;</button>
+        </div>
+        
+        <div class="manage-container">
+          <div class="manage-header">
+            <div class="manage-stats">
+              <span id="permissionsCount">Cargando...</span>
+            </div>
+            <div class="manage-filters">
+              <select id="permissionsStatusFilter">
+                <option value="">Todos los estados</option>
+                <option value="pendiente">⏳ Pendientes</option>
+                <option value="aprobado">✅ Aprobados</option>
+                <option value="rechazado">❌ Rechazados</option>
+                <option value="en_revision">🔍 En Revisión</option>
+              </select>
+              <button id="refreshPermissions" class="btn btn-refresh">🔄 Actualizar</button>
+            </div>
+          </div>
+          
+          <div id="loadingPermissions" class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Cargando permisos...</p>
+          </div>
+          
+          <div id="permissionsList" class="manage-list"></div>
+          
+          <div id="errorLoadingPermissions" class="error-container hidden">
+            <p>❌ Error al cargar permisos</p>
+            <button id="retryLoadPermissions" class="btn btn-retry">Reintentar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Gestionar Vacaciones -->
+    <div id="manageVacationsModal" class="modal hidden">
+      <div class="modal-content manage-modal">
+        <div class="modal-header">
+          <h2>📊 Gestionar Vacaciones</h2>
+          <button id="closeManageVacationsModal" class="btn-close">&times;</button>
+        </div>
+        
+        <div class="manage-container">
+          <div class="manage-header">
+            <div class="manage-stats">
+              <span id="vacationsCount">Cargando...</span>
+            </div>
+            <div class="manage-filters">
+              <select id="vacationsStatusFilter">
+                <option value="">Todos los estados</option>
+                <option value="pendiente">⏳ Pendientes</option>
+                <option value="aprobado">✅ Aprobados</option>
+                <option value="rechazado">❌ Rechazados</option>
+                <option value="en_proceso">🔄 En Proceso</option>
+              </select>
+              <button id="refreshVacations" class="btn btn-refresh">🔄 Actualizar</button>
+            </div>
+          </div>
+          
+          <div id="loadingVacations" class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Cargando vacaciones...</p>
+          </div>
+          
+          <div id="vacationsList" class="manage-list"></div>
+          
+          <div id="errorLoadingVacations" class="error-container hidden">
+            <p>❌ Error al cargar vacaciones</p>
+            <button id="retryLoadVacations" class="btn btn-retry">Reintentar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Cambiar Estado -->
+    <div id="changeStatusModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="changeStatusTitle">🔄 Cambiar Estado</h2>
+          <button id="closeChangeStatusModal" class="btn-close">&times;</button>
+        </div>
+        
+        <div class="change-status-container">
+          <div id="statusItemInfo" class="status-item-info"></div>
+          
+          <div class="form-group">
+            <label for="newStatus">Nuevo Estado *</label>
+            <select id="newStatus" name="newStatus" required>
+              <!-- Las opciones se llenarán dinámicamente según el tipo -->
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="statusComment">Actualizar Motivo/Justificación (opcional)</label>
+            <textarea id="statusComment" name="statusComment" rows="3" placeholder="Actualiza el motivo o añade comentarios sobre el cambio de estado..."></textarea>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" id="cancelStatusChange" class="btn btn-cancel">Cancelar</button>
+            <button type="button" id="confirmStatusChange" class="btn btn-submit">
+              <span class="submit-text">🔄 Cambiar Estado</span>
+              <span class="loading hidden">Cambiando...</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

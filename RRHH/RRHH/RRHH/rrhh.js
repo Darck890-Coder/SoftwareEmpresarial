@@ -47,6 +47,30 @@ const vacationsForm = document.getElementById("vacationsForm");
 const vacationEmployeeSelect = document.getElementById("vacationEmployeeSelect");
 const submitVacationsBtn = document.getElementById("submitVacations");
 
+// Elementos para gestionar permisos
+const managePermissionsBtn = document.getElementById("managePermissionsBtn");
+const managePermissionsModal = document.getElementById("managePermissionsModal");
+const closeManagePermissionsModalBtn = document.getElementById("closeManagePermissionsModal");
+const refreshPermissionsBtn = document.getElementById("refreshPermissions");
+const permissionsStatusFilter = document.getElementById("permissionsStatusFilter");
+
+// Elementos para gestionar vacaciones
+const manageVacationsBtn = document.getElementById("manageVacationsBtn");
+const manageVacationsModal = document.getElementById("manageVacationsModal");
+const closeManageVacationsModalBtn = document.getElementById("closeManageVacationsModal");
+const refreshVacationsBtn = document.getElementById("refreshVacations");
+const vacationsStatusFilter = document.getElementById("vacationsStatusFilter");
+
+// Elementos del modal de cambio de estado
+const changeStatusModal = document.getElementById("changeStatusModal");
+const closeChangeStatusModalBtn = document.getElementById("closeChangeStatusModal");
+const changeStatusTitle = document.getElementById("changeStatusTitle");
+const statusItemInfo = document.getElementById("statusItemInfo");
+const newStatusSelect = document.getElementById("newStatus");
+const statusCommentTextarea = document.getElementById("statusComment");
+const confirmStatusChangeBtn = document.getElementById("confirmStatusChange");
+const cancelStatusChangeBtn = document.getElementById("cancelStatusChange");
+
 // ===== FUNCIONES BÁSICAS =====
 
 function addMessage(message, sender) {
@@ -302,6 +326,300 @@ function cerrarModalVacaciones() {
             vacationsForm.reset();
         }
         console.log("✅ Modal de vacaciones cerrado");
+    }
+}
+
+function abrirModalGestionPermisos() {
+    console.log("📋 Abriendo modal de gestión de permisos...");
+    if (managePermissionsModal) {
+        managePermissionsModal.classList.remove('hidden');
+        managePermissionsModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        cargarListaPermisos();
+        console.log("✅ Modal de gestión de permisos abierto");
+    }
+}
+
+function cerrarModalGestionPermisos() {
+    console.log("🔒 Cerrando modal de gestión de permisos...");
+    if (managePermissionsModal) {
+        managePermissionsModal.classList.add('hidden');
+        managePermissionsModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        console.log("✅ Modal de gestión de permisos cerrado");
+    }
+}
+
+function abrirModalGestionVacaciones() {
+    console.log("📊 Abriendo modal de gestión de vacaciones...");
+    if (manageVacationsModal) {
+        manageVacationsModal.classList.remove('hidden');
+        manageVacationsModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        cargarListaVacaciones();
+        console.log("✅ Modal de gestión de vacaciones abierto");
+    }
+}
+
+function cerrarModalGestionVacaciones() {
+    console.log("🔒 Cerrando modal de gestión de vacaciones...");
+    if (manageVacationsModal) {
+        manageVacationsModal.classList.add('hidden');
+        manageVacationsModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        console.log("✅ Modal de gestión de vacaciones cerrado");
+    }
+}
+
+function abrirModalCambiarEstado(tipo, item) {
+    console.log(`🔄 Abriendo modal de cambio de estado para ${tipo}:`, item);
+    if (changeStatusModal) {
+        changeStatusModal.classList.remove('hidden');
+        changeStatusModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+        // Configurar el modal según el tipo
+        if (tipo === 'permiso') {
+            changeStatusTitle.textContent = '🔄 Cambiar Estado del Permiso';
+            statusItemInfo.innerHTML = `
+                <h4>👤 ${item.nombre} ${item.apellido}</h4>
+                <p><strong>Tipo:</strong> ${item.tipo_permiso}</p>
+                <p><strong>Días:</strong> ${item.dias_estimados}</p>
+                <p><strong>Estado actual:</strong> <span class="status-badge ${item.estado}">${getStatusLabel(item.estado)}</span></p>
+                <p><strong>Motivo:</strong> ${item['motivo/justificacion']}</p>
+            `;
+            
+            // Opciones para permisos
+            newStatusSelect.innerHTML = `
+                <option value="">Seleccionar nuevo estado...</option>
+                <option value="pendiente">⏳ Pendiente de Aprobación</option>
+                <option value="aprobado">✅ Aprobado</option>
+                <option value="rechazado">❌ Rechazado</option>
+                <option value="en_revision">🔍 En Revisión</option>
+            `;
+        } else if (tipo === 'vacaciones') {
+            changeStatusTitle.textContent = '🔄 Cambiar Estado de Vacaciones';
+            statusItemInfo.innerHTML = `
+                <h4>👤 ${item.nombre} ${item.apellido}</h4>
+                <p><strong>Tipo:</strong> ${item.Tipo_vacaciones}</p>
+                <p><strong>Período:</strong> ${formatearFecha(item.inicio_vacaciones)} - ${formatearFecha(item.fin_vacaciones)}</p>
+                <p><strong>Estado actual:</strong> <span class="status-badge ${item.Estado}">${getStatusLabel(item.Estado)}</span></p>
+                <p><strong>Motivo:</strong> ${item['Motivo/observaciones'] || 'No especificado'}</p>
+            `;
+            
+            // Opciones para vacaciones
+            newStatusSelect.innerHTML = `
+                <option value="">Seleccionar nuevo estado...</option>
+                <option value="pendiente">⏳ Pendiente de Aprobación</option>
+                <option value="aprobado">✅ Aprobado</option>
+                <option value="rechazado">❌ Rechazado</option>
+                <option value="en_proceso">🔄 En Proceso</option>
+            `;
+        }
+        
+        // Guardar información del item para usarla después
+        changeStatusModal.dataset.tipo = tipo;
+        changeStatusModal.dataset.itemId = item.id;
+        
+        console.log("✅ Modal de cambio de estado configurado");
+    }
+}
+
+function cerrarModalCambiarEstado() {
+    console.log("🔒 Cerrando modal de cambio de estado...");
+    if (changeStatusModal) {
+        changeStatusModal.classList.add('hidden');
+        changeStatusModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        
+        // Limpiar formulario
+        newStatusSelect.value = '';
+        statusCommentTextarea.value = '';
+        
+        console.log("✅ Modal de cambio de estado cerrado");
+    }
+}
+
+// ===== FUNCIONES AUXILIARES PARA GESTIÓN =====
+
+function getStatusLabel(status) {
+    const statusLabels = {
+        'pendiente': '⏳ Pendiente',
+        'aprobado': '✅ Aprobado',
+        'rechazado': '❌ Rechazado',
+        'en_revision': '🔍 En Revisión',
+        'en_proceso': '🔄 En Proceso'
+    };
+    return statusLabels[status] || status;
+}
+
+function formatearFecha(fechaString) {
+    if (!fechaString) return 'No especificado';
+    const fecha = new Date(fechaString);
+    return fecha.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
+async function cargarListaPermisos() {
+    const permissionsList = document.getElementById('permissionsList');
+    const loadingDiv = document.getElementById('loadingPermissions');
+    const errorDiv = document.getElementById('errorLoadingPermissions');
+    const permissionsCount = document.getElementById('permissionsCount');
+    
+    if (loadingDiv) loadingDiv.classList.remove('hidden');
+    if (errorDiv) errorDiv.classList.add('hidden');
+    if (permissionsList) permissionsList.innerHTML = '';
+    if (permissionsCount) permissionsCount.textContent = 'Cargando...';
+    
+    const resultado = await cargarPermisos();
+    
+    if (loadingDiv) loadingDiv.classList.add('hidden');
+    
+    if (resultado.success) {
+        if (permissionsList && permissionsCount) {
+            const totalPermisos = resultado.data.length;
+            permissionsCount.innerHTML = `📊 Total de permisos: <strong>${totalPermisos}</strong>`;
+            
+            if (totalPermisos === 0) {
+                permissionsList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📝</div>
+                        <h3>No hay permisos registrados</h3>
+                        <p>Los permisos aparecerán aquí cuando se registren.</p>
+                    </div>
+                `;
+            } else {
+                resultado.data.forEach(permiso => {
+                    const permisoCard = document.createElement('div');
+                    permisoCard.className = 'manage-item';
+                    permisoCard.innerHTML = `
+                        <div class="manage-item-header">
+                            <div class="manage-item-info">
+                                <h4>👤 ${permiso.nombre} ${permiso.apellido}</h4>
+                                <div class="manage-item-meta">
+                                    ID: #${permiso.id} • Registrado: ${formatearFecha(permiso.created_at)}
+                                </div>
+                            </div>
+                            <span class="status-badge ${permiso.estado}">${getStatusLabel(permiso.estado)}</span>
+                        </div>
+                        <div class="manage-item-details">
+                            <div class="detail-row">
+                                <span class="label">🏷️ Tipo:</span>
+                                <span class="value">${permiso.tipo_permiso}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">⏱️ Días:</span>
+                                <span class="value">${permiso.dias_estimados} día${permiso.dias_estimados !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">📝 Motivo:</span>
+                                <span class="value">${permiso['motivo/justificacion']}</span>
+                            </div>
+                        </div>
+                        <div class="manage-item-actions">
+                            <button class="btn-change-status" onclick="abrirModalCambiarEstado('permiso', ${JSON.stringify(permiso).replace(/"/g, '&quot;')})">
+                                🔄 Cambiar Estado
+                            </button>
+                        </div>
+                    `;
+                    permissionsList.appendChild(permisoCard);
+                });
+            }
+        }
+    } else {
+        if (errorDiv && permissionsCount) {
+            errorDiv.classList.remove('hidden');
+            errorDiv.textContent = `Error al cargar permisos: ${resultado.error}`;
+            permissionsCount.textContent = '❌ Error al cargar';
+        }
+    }
+}
+
+async function cargarListaVacaciones() {
+    const vacationsList = document.getElementById('vacationsList');
+    const loadingDiv = document.getElementById('loadingVacations');
+    const errorDiv = document.getElementById('errorLoadingVacations');
+    const vacationsCount = document.getElementById('vacationsCount');
+    
+    if (loadingDiv) loadingDiv.classList.remove('hidden');
+    if (errorDiv) errorDiv.classList.add('hidden');
+    if (vacationsList) vacationsList.innerHTML = '';
+    if (vacationsCount) vacationsCount.textContent = 'Cargando...';
+    
+    const resultado = await cargarVacacionesGestion();
+    
+    if (loadingDiv) loadingDiv.classList.add('hidden');
+    
+    if (resultado.success) {
+        if (vacationsList && vacationsCount) {
+            const totalVacaciones = resultado.data.length;
+            vacationsCount.innerHTML = `📊 Total de vacaciones: <strong>${totalVacaciones}</strong>`;
+            
+            if (totalVacaciones === 0) {
+                vacationsList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🏖️</div>
+                        <h3>No hay vacaciones registradas</h3>
+                        <p>Las vacaciones aparecerán aquí cuando se asignen.</p>
+                    </div>
+                `;
+            } else {
+                resultado.data.forEach(vacacion => {
+                    const vacacionCard = document.createElement('div');
+                    vacacionCard.className = 'manage-item';
+                    
+                    const fechaInicio = new Date(vacacion.inicio_vacaciones);
+                    const fechaFin = new Date(vacacion.fin_vacaciones);
+                    const diffTime = Math.abs(fechaFin - fechaInicio);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    vacacionCard.innerHTML = `
+                        <div class="manage-item-header">
+                            <div class="manage-item-info">
+                                <h4>👤 ${vacacion.nombre} ${vacacion.apellido}</h4>
+                                <div class="manage-item-meta">
+                                    ID: #${vacacion.id} • Registrado: ${formatearFecha(vacacion.created_at)}
+                                </div>
+                            </div>
+                            <span class="status-badge ${vacacion.Estado}">${getStatusLabel(vacacion.Estado)}</span>
+                        </div>
+                        <div class="manage-item-details">
+                            <div class="detail-row">
+                                <span class="label">🏷️ Tipo:</span>
+                                <span class="value">${vacacion.Tipo_vacaciones}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">📅 Período:</span>
+                                <span class="value">${formatearFecha(vacacion.inicio_vacaciones)} - ${formatearFecha(vacacion.fin_vacaciones)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">⏱️ Duración:</span>
+                                <span class="value">${diffDays} día${diffDays !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">📝 Motivo:</span>
+                                <span class="value">${vacacion['Motivo/observaciones'] || 'No especificado'}</span>
+                            </div>
+                        </div>
+                        <div class="manage-item-actions">
+                            <button class="btn-change-status" onclick="abrirModalCambiarEstado('vacaciones', ${JSON.stringify(vacacion).replace(/"/g, '&quot;')})">
+                                🔄 Cambiar Estado
+                            </button>
+                        </div>
+                    `;
+                    vacationsList.appendChild(vacacionCard);
+                });
+            }
+        }
+    } else {
+        if (errorDiv && vacationsCount) {
+            errorDiv.classList.remove('hidden');
+            errorDiv.textContent = `Error al cargar vacaciones: ${resultado.error}`;
+            vacationsCount.textContent = '❌ Error al cargar';
+        }
     }
 }
 
@@ -561,6 +879,146 @@ async function guardarVacacionesSupabase(datosVacaciones) {
     }
   } catch (error) {
     console.error("💥 Error de conexión con Supabase:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ===== FUNCIONES PARA GESTIONAR PERMISOS Y VACACIONES =====
+
+async function cargarPermisos() {
+  try {
+    console.log("🔄 Cargando permisos desde Supabase...");
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLA_PERMISOS}?select=*&order=created_at.desc`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    });
+
+    if (response.ok) {
+      const permisos = await response.json();
+      console.log("✅ Permisos cargados:", permisos);
+      return { success: true, data: permisos };
+    } else {
+      const errorText = await response.text();
+      console.error("❌ Error al cargar permisos:", response.status, errorText);
+      return { success: false, error: `Error ${response.status}: ${errorText}` };
+    }
+  } catch (error) {
+    console.error("💥 Error de conexión:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function cargarVacacionesGestion() {
+  try {
+    console.log("🔄 Cargando vacaciones desde Supabase...");
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLA_VACACIONES}?select=*&order=created_at.desc`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    });
+
+    if (response.ok) {
+      const vacaciones = await response.json();
+      console.log("✅ Vacaciones cargadas:", vacaciones);
+      return { success: true, data: vacaciones };
+    } else {
+      const errorText = await response.text();
+      console.error("❌ Error al cargar vacaciones:", response.status, errorText);
+      return { success: false, error: `Error ${response.status}: ${errorText}` };
+    }
+  } catch (error) {
+    console.error("💥 Error de conexión:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function actualizarEstadoPermiso(id, nuevoEstado, comentario = '') {
+  try {
+    console.log(`🔄 Actualizando estado del permiso ${id} a ${nuevoEstado}...`);
+    
+    // Preparar datos para actualizar
+    const datosActualizacion = { 
+      estado: nuevoEstado
+    };
+    
+    // Solo actualizar motivo/justificacion si hay comentario
+    if (comentario && comentario.trim()) {
+      datosActualizacion['motivo/justificacion'] = comentario.trim();
+    }
+    
+    console.log("📝 Datos a actualizar:", datosActualizacion);
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLA_PERMISOS}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(datosActualizacion)
+    });
+
+    if (response.ok) {
+      console.log("✅ Estado del permiso actualizado exitosamente");
+      return { success: true };
+    } else {
+      const errorText = await response.text();
+      console.error("❌ Error al actualizar estado del permiso:", response.status, errorText);
+      return { success: false, error: `Error ${response.status}: ${errorText}` };
+    }
+  } catch (error) {
+    console.error("💥 Error de conexión:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function actualizarEstadoVacaciones(id, nuevoEstado, comentario = '') {
+  try {
+    console.log(`🔄 Actualizando estado de las vacaciones ${id} a ${nuevoEstado}...`);
+    
+    // Preparar datos para actualizar
+    const datosActualizacion = { 
+      Estado: nuevoEstado
+    };
+    
+    // Solo actualizar Motivo/observaciones si hay comentario
+    if (comentario && comentario.trim()) {
+      datosActualizacion['Motivo/observaciones'] = comentario.trim();
+    }
+    
+    console.log("📝 Datos a actualizar:", datosActualizacion);
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLA_VACACIONES}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(datosActualizacion)
+    });
+
+    if (response.ok) {
+      console.log("✅ Estado de las vacaciones actualizado exitosamente");
+      return { success: true };
+    } else {
+      const errorText = await response.text();
+      console.error("❌ Error al actualizar estado de las vacaciones:", response.status, errorText);
+      return { success: false, error: `Error ${response.status}: ${errorText}` };
+    }
+  } catch (error) {
+    console.error("💥 Error de conexión:", error);
     return { success: false, error: error.message };
   }
 }
@@ -869,6 +1327,110 @@ if (vacationsForm) {
     console.error("❌ No se encontró el formulario de vacaciones");
 }
 
+// Event listeners para gestión de permisos
+if (managePermissionsBtn) {
+    console.log("✅ Configurando evento para botón de gestión de permisos");
+    managePermissionsBtn.addEventListener("click", function() {
+        console.log("🖱️ Click en botón de gestión de permisos detectado");
+        abrirModalGestionPermisos();
+    });
+} else {
+    console.error("❌ No se encontró el botón de gestión de permisos");
+}
+
+if (closeManagePermissionsModalBtn) {
+    closeManagePermissionsModalBtn.addEventListener("click", cerrarModalGestionPermisos);
+}
+
+if (refreshPermissionsBtn) {
+    refreshPermissionsBtn.addEventListener("click", cargarListaPermisos);
+}
+
+// Event listeners para gestión de vacaciones
+if (manageVacationsBtn) {
+    console.log("✅ Configurando evento para botón de gestión de vacaciones");
+    manageVacationsBtn.addEventListener("click", function() {
+        console.log("🖱️ Click en botón de gestión de vacaciones detectado");
+        abrirModalGestionVacaciones();
+    });
+} else {
+    console.error("❌ No se encontró el botón de gestión de vacaciones");
+}
+
+if (closeManageVacationsModalBtn) {
+    closeManageVacationsModalBtn.addEventListener("click", cerrarModalGestionVacaciones);
+}
+
+if (refreshVacationsBtn) {
+    refreshVacationsBtn.addEventListener("click", cargarListaVacaciones);
+}
+
+// Event listeners para modal de cambio de estado
+if (closeChangeStatusModalBtn) {
+    closeChangeStatusModalBtn.addEventListener("click", cerrarModalCambiarEstado);
+}
+
+if (cancelStatusChangeBtn) {
+    cancelStatusChangeBtn.addEventListener("click", cerrarModalCambiarEstado);
+}
+
+if (confirmStatusChangeBtn) {
+    confirmStatusChangeBtn.addEventListener("click", async function() {
+        const tipo = changeStatusModal.dataset.tipo;
+        const itemId = changeStatusModal.dataset.itemId;
+        const nuevoEstado = newStatusSelect.value;
+        const comentario = statusCommentTextarea.value;
+        
+        if (!nuevoEstado) {
+            alert('Por favor selecciona un nuevo estado');
+            return;
+        }
+        
+        const submitText = confirmStatusChangeBtn.querySelector('.submit-text');
+        const loading = confirmStatusChangeBtn.querySelector('.loading');
+        
+        // Mostrar loading
+        if (submitText) submitText.style.opacity = '0';
+        if (loading) loading.classList.remove('hidden');
+        confirmStatusChangeBtn.disabled = true;
+        
+        try {
+            let resultado;
+            if (tipo === 'permiso') {
+                resultado = await actualizarEstadoPermiso(itemId, nuevoEstado, comentario);
+            } else if (tipo === 'vacaciones') {
+                resultado = await actualizarEstadoVacaciones(itemId, nuevoEstado, comentario);
+            }
+            
+            if (resultado.success) {
+                const tipoTexto = tipo === 'permiso' ? 'permiso' : 'vacaciones';
+                const mensaje = comentario ? 
+                    `✅ Estado de ${tipoTexto} actualizado a "${getStatusLabel(nuevoEstado)}" y motivo actualizado` :
+                    `✅ Estado de ${tipoTexto} actualizado a "${getStatusLabel(nuevoEstado)}"`;
+                addMessage(mensaje, "bot");
+                cerrarModalCambiarEstado();
+                
+                // Recargar la lista correspondiente
+                if (tipo === 'permiso') {
+                    cargarListaPermisos();
+                } else if (tipo === 'vacaciones') {
+                    cargarListaVacaciones();
+                }
+            } else {
+                throw new Error(resultado.error);
+            }
+        } catch (error) {
+            console.error("Error al cambiar estado:", error);
+            addMessage(`❌ Error al cambiar estado: ${error.message}`, "bot");
+        } finally {
+            // Restaurar botón
+            if (submitText) submitText.style.opacity = '1';
+            if (loading) loading.classList.add('hidden');
+            confirmStatusChangeBtn.disabled = false;
+        }
+    });
+}
+
 // Event listeners para resumen de vacaciones
 const vacStartDate = document.getElementById('vacationStartDate');
 const vacEndDate = document.getElementById('vacationEndDate');
@@ -939,6 +1501,15 @@ window.addEventListener("click", function(e) {
     if (e.target === vacationsModal) {
         cerrarModalVacaciones();
     }
+    if (e.target === managePermissionsModal) {
+        cerrarModalGestionPermisos();
+    }
+    if (e.target === manageVacationsModal) {
+        cerrarModalGestionVacaciones();
+    }
+    if (e.target === changeStatusModal) {
+        cerrarModalCambiarEstado();
+    }
 });
 
 // ===== INICIALIZACIÓN =====
@@ -954,8 +1525,13 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("🔍 Verificando elementos:");
     console.log("permissionsBtn:", permissionsBtn);
     console.log("vacationsBtn:", vacationsBtn);
+    console.log("managePermissionsBtn:", managePermissionsBtn);
+    console.log("manageVacationsBtn:", manageVacationsBtn);
     console.log("permissionsModal:", permissionsModal);
     console.log("vacationsModal:", vacationsModal);
+    console.log("managePermissionsModal:", managePermissionsModal);
+    console.log("manageVacationsModal:", manageVacationsModal);
+    console.log("changeStatusModal:", changeStatusModal);
     
     addMessage("¡Hola! Soy el asistente de Recursos Humanos. ¿En qué puedo ayudarte hoy?", "bot");
     console.log("✅ Mensaje de bienvenida enviado");
