@@ -21,6 +21,8 @@
       <div class="controls">
         <button id="openEmployeeForm" class="btn icon" title="Registrar Empleado">👤</button>
         <button id="viewEmployees" class="btn icon" title="Ver Empleados">👥</button>
+        <button id="permissionsBtn" class="btn icon" title="Registrar Permiso">📝</button>
+        <button id="vacationsBtn" class="btn icon" title="Asignar Vacaciones">🏖️</button>
         <button id="toggleTheme" class="btn icon" title="Cambiar tema">🌙</button>
       </div>
     </header>
@@ -55,14 +57,14 @@
             <button id="refreshEmployees" class="btn btn-refresh">🔄 Actualizar</button>
           </div>
           
-          <div id="employeesLoading" class="loading-container">
+          <div id="loadingEmployees" class="loading-container">
             <div class="loading-spinner"></div>
             <p>Cargando empleados...</p>
           </div>
           
-          <div id="employeesList" class="employees-list"></div>
+          <div id="employeeList" class="employees-list"></div>
           
-          <div id="employeesError" class="error-container hidden">
+          <div id="errorLoadingEmployees" class="error-container hidden">
             <p>❌ Error al cargar empleados</p>
             <button id="retryLoad" class="btn btn-retry">Reintentar</button>
           </div>
@@ -80,28 +82,28 @@
         
         <form id="employeeForm" class="employee-form">
           <div class="form-group">
-            <label for="nombre">Nombre *</label>
-            <input type="text" id="nombre" name="nombre" required>
+            <label for="name">Nombre *</label>
+            <input type="text" id="name" name="name" required>
           </div>
           
           <div class="form-group">
-            <label for="apellido">Apellido *</label>
-            <input type="text" id="apellido" name="apellido" required>
+            <label for="surname">Apellido *</label>
+            <input type="text" id="surname" name="surname" required>
           </div>
           
           <div class="form-group">
-            <label for="correo">Correo Electrónico *</label>
-            <input type="email" id="correo" name="correo" required>
+            <label for="email">Correo Electrónico *</label>
+            <input type="email" id="email" name="email" required>
           </div>
           
           <div class="form-group">
-            <label for="telefono">Número de Teléfono *</label>
-            <input type="tel" id="telefono" name="telefono" required>
+            <label for="phone">Número de Teléfono *</label>
+            <input type="tel" id="phone" name="phone" required>
           </div>
           
           <div class="form-group">
-            <label for="direccion">Dirección *</label>
-            <textarea id="direccion" name="direccion" rows="3" required></textarea>
+            <label for="address">Dirección *</label>
+            <textarea id="address" name="address" rows="3" required></textarea>
           </div>
           
           <div class="form-actions">
@@ -109,6 +111,194 @@
             <button type="submit" id="submitForm" class="btn btn-submit">
               <span class="submit-text">Guardar Empleado</span>
               <span class="loading hidden">Guardando...</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal Registrar Permisos -->
+    <div id="permissionsModal" class="modal hidden">
+      <div class="modal-content permissions-modal">
+        <div class="modal-header">
+          <h2>📝 Registrar Permiso de Ausencia</h2>
+          <button id="closePermissionsModal" class="btn-close">&times;</button>
+        </div>
+        
+        <form id="permissionsForm" class="permissions-form">
+          <div class="form-section">
+            <h3>👤 Seleccionar Empleado</h3>
+            <div class="form-group">
+              <label for="employeeSelect">Empleado *</label>
+              <select id="employeeSelect" name="employeeSelect" required>
+                <option value="">Cargando empleados...</option>
+              </select>
+              <button type="button" id="refreshEmployeeSelect" class="btn btn-refresh-small">🔄</button>
+            </div>
+            
+            <div id="selectedEmployeeInfo" class="employee-info-card hidden">
+              <div class="info-header">
+                <div class="employee-avatar-small"></div>
+                <div class="employee-details">
+                  <h4 id="selectedEmployeeName">-</h4>
+                  <span id="selectedEmployeeEmail">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <h3>📝 Configurar Permiso</h3>
+            
+            <div class="form-group">
+              <label for="estimatedDays">Días Estimados *</label>
+              <input type="number" id="estimatedDays" name="estimatedDays" min="1" max="10" required>
+              <small class="form-help">Ingresa la cantidad de días del permiso</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="permissionType">Tipo de Permiso *</label>
+              <select id="permissionType" name="permissionType" required>
+                <option value="">Seleccionar tipo...</option>
+                <option value="medico">🏥 Cita Médica</option>
+                <option value="personal">👨‍👩‍👧‍👦 Asunto Personal</option>
+                <option value="familiar">👨‍👩‍👧‍👦 Asunto Familiar</option>
+                <option value="emergencia">🚨 Emergencia</option>
+                <option value="tramite">📄 Trámite Personal</option>
+                <option value="enfermedad">🤒 Enfermedad</option>
+                <option value="otro">📝 Otro</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="permissionStatus">Estado *</label>
+              <select id="permissionStatus" name="permissionStatus" required>
+                <option value="pendiente">⏳ Pendiente de Aprobación</option>
+                <option value="aprobado">✅ Aprobado</option>
+                <option value="rechazado">❌ Rechazado</option>
+                <option value="en_revision">🔍 En Revisión</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="permissionReason">Motivo/Justificación *</label>
+              <textarea id="permissionReason" name="permissionReason" rows="3" placeholder="Describe el motivo del permiso..." required></textarea>
+            </div>
+            
+            <div class="permission-summary">
+              <h4>📋 Resumen del Permiso</h4>
+              <div class="summary-item">
+                <span>⏱️ Duración:</span>
+                <span id="permissionDurationSummary">-</span>
+              </div>
+              <div class="summary-item">
+                <span>📄 Tipo:</span>
+                <span id="permissionTypeSummary">-</span>
+              </div>
+              <div class="summary-item">
+                <span>🔍 Estado:</span>
+                <span id="permissionStatusSummary">-</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" id="cancelPermissions" class="btn btn-cancel">Cancelar</button>
+            <button type="submit" id="submitPermissions" class="btn btn-submit">
+              <span class="submit-text">📝 Registrar Permiso</span>
+              <span class="loading hidden">Registrando...</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal Asignar Vacaciones -->
+    <div id="vacationsModal" class="modal hidden">
+      <div class="modal-content vacations-modal">
+        <div class="modal-header">
+          <h2>🏖️ Asignar Vacaciones</h2>
+          <button id="closeVacationsModal" class="btn-close">&times;</button>
+        </div>
+        
+        <form id="vacationsForm" class="vacations-form">
+          <div class="form-section">
+            <h3>👤 Seleccionar Empleado</h3>
+            <div class="form-group">
+              <label for="vacationEmployeeSelect">Empleado *</label>
+              <select id="vacationEmployeeSelect" name="vacationEmployee" required>
+                <option value="">Cargando empleados...</option>
+              </select>
+              <button type="button" id="refreshVacationEmployeeSelect" class="btn btn-refresh-small">🔄</button>
+            </div>
+            
+            <div id="selectedVacationEmployeeInfo" class="employee-info-card hidden">
+              <div class="info-header">
+                <div class="employee-avatar-small"></div>
+                <div class="employee-details">
+                  <h4 id="selectedVacationEmployeeName">-</h4>
+                  <span id="selectedVacationEmployeeEmail">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <h3>🏖️ Configurar Vacaciones</h3>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="vacationStartDate">Fecha de Inicio *</label>
+                <input type="date" id="vacationStartDate" name="startDate" required>
+              </div>
+              <div class="form-group">
+                <label for="vacationEndDate">Fecha de Fin *</label>
+                <input type="date" id="vacationEndDate" name="endDate" required>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="vacationType">Tipo de Vacaciones *</label>
+              <select id="vacationType" name="vacationType" required>
+                <option value="">Seleccionar tipo...</option>
+                <option value="anuales">🌴 Vacaciones Anuales</option>
+                <option value="compensatorio">⏰ Tiempo Compensatorio</option>
+                <option value="personales">👨‍👩‍👧‍👦 Asuntos Personales</option>
+                <option value="medicas">🏥 Incapacidad Médica</option>
+                <option value="maternidad">🤱 Licencia de Maternidad</option>
+                <option value="paternidad">👨‍👧 Licencia de Paternidad</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="vacationStatus">Estado *</label>
+              <select id="vacationStatus" name="vacationStatus" required>
+                <option value="pendiente">⏳ Pendiente de Aprobación</option>
+                <option value="aprobado">✅ Aprobado</option>
+                <option value="rechazado">❌ Rechazado</option>
+                <option value="en_proceso">🔄 En Proceso</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="vacationReason">Motivos/Observaciones</label>
+              <textarea id="vacationReason" name="vacationReason" rows="3" placeholder="Describe el motivo de las vacaciones..."></textarea>
+            </div>
+            
+            <div class="vacation-summary">
+              <h4>📋 Resumen</h4>
+              <div class="summary-item">
+                <span>📅 Período:</span>
+                <span id="vacationPeriodSummary">-</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" id="cancelVacations" class="btn btn-cancel">Cancelar</button>
+            <button type="submit" id="submitVacations" class="btn btn-submit">
+              <span class="submit-text">🏖️ Asignar Vacaciones</span>
+              <span class="loading hidden">Asignando...</span>
             </button>
           </div>
         </form>
