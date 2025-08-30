@@ -135,6 +135,130 @@ body {
   background: var(--modal-bg);
   color: var(--text);
   border-bottom-left-radius: 8px;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+/* Estilos para mensajes del bot estructurados */
+.bot-message-structured {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.message.bot .message-content p {
+  margin: 0 0 12px 0;
+  line-height: 1.6;
+}
+
+.message.bot .message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.message.bot .message-content ul,
+.message.bot .message-content ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.message.bot .message-content li {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.message.bot .message-content strong {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+body.dark-theme .message.bot .message-content strong {
+  color: var(--primary-light);
+}
+
+.message.bot .message-content em {
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.message.bot .message-content code {
+  background: rgba(0, 86, 210, 0.1);
+  color: var(--primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+body.dark-theme .message.bot .message-content code {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--primary-light);
+}
+
+.message.bot .message-content br + br {
+  display: block;
+  margin: 8px 0;
+  content: "";
+}
+
+/* Estilos adicionales para mejorar legibilidad */
+.message.bot .message-content {
+  word-spacing: 0.1em;
+  letter-spacing: 0.01em;
+}
+
+/* Espaciado mejorado para párrafos largos */
+.message.bot .message-content {
+  max-width: 90%;
+}
+
+/* Hacer que los mensajes largos tengan mejor espaciado */
+.message.bot .message-content:has(br) {
+  white-space: pre-line;
+}
+
+/* Efecto de aparición suave para mensajes estructurados */
+.bot-message-structured {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mejorar la visualización de listas */
+.message.bot .message-content ul li::marker {
+  color: var(--primary);
+}
+
+.message.bot .message-content ol li::marker {
+  color: var(--primary);
+  font-weight: bold;
+}
+
+/* Separadores visuales para contenido largo */
+.message.bot .message-content hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 16px 0;
+}
+
+/* Citas o información importante */
+.message.bot .message-content blockquote {
+  border-left: 4px solid var(--primary);
+  padding-left: 12px;
+  margin: 8px 0;
+  opacity: 0.9;
+  font-style: italic;
+}
+
+body.dark-theme .message.bot .message-content blockquote {
+  border-left-color: var(--primary-light);
 }
 
 .message.user .message-content {

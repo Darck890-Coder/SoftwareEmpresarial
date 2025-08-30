@@ -7,6 +7,61 @@ const TABLA_EMPLEADOS = "Empleados_alta";
 const TABLA_VACACIONES = "Vacaciones_empleados";
 const TABLA_PERMISOS = "Permisos"; 
 
+// ===== SISTEMA DE SESIONES =====
+// Generar o recuperar session_id para mantener memoria del chatbot
+let SESSION_ID = null;
+
+function initializeSession() {
+    // Intentar recuperar session_id existente
+    SESSION_ID = localStorage.getItem('hr_chatbot_session_id');
+    
+    // Si no existe, generar uno nuevo
+    if (!SESSION_ID) {
+        SESSION_ID = generateSessionId();
+        localStorage.setItem('hr_chatbot_session_id', SESSION_ID);
+        console.log("🆕 Nueva sesión creada:", SESSION_ID);
+    } else {
+        console.log("🔄 Sesión recuperada:", SESSION_ID);
+    }
+    
+    // Mostrar información de sesión en la consola
+    console.log("🔑 Session ID activa:", SESSION_ID);
+    
+    // Agregar el session_id al título del chat para debug
+    updateChatTitle();
+}
+
+function generateSessionId() {
+    // Generar un UUID único basado en timestamp y random
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 15);
+    const sessionId = `hr_${timestamp}_${random}`;
+    return sessionId;
+}
+
+function updateChatTitle() {
+    // Agregar indicador de sesión al DOM para debug (opcional)
+    const brandText = document.querySelector('.brand-text h1');
+    if (brandText && !brandText.textContent.includes('Sesión:')) {
+        const shortSessionId = SESSION_ID.substring(SESSION_ID.length - 8);
+        brandText.textContent += ` (Sesión: ${shortSessionId})`;
+    }
+}
+
+function resetSession() {
+    // Función para limpiar la sesión y empezar una nueva
+    localStorage.removeItem('hr_chatbot_session_id');
+    SESSION_ID = null;
+    initializeSession();
+    console.log("🔄 Sesión reiniciada:", SESSION_ID);
+    
+    // Limpiar el chat
+    if (chatBox) {
+        chatBox.innerHTML = '';
+        addMessage("Nueva sesión iniciada. ¡Hola! Soy tu asistente de Recursos Humanos. ¿En qué puedo ayudarte hoy?", "bot");
+    }
+} 
+
 // Elementos DOM
 const chatBox = document.getElementById("chat-box");
 const chatContainer = document.getElementById("chat-container");
@@ -23,6 +78,9 @@ const submitBtn = document.getElementById("submitForm");
 
 // Elemento del botón de tema
 const themeBtn = document.getElementById("toggleTheme");
+
+// Elemento del botón de resetear sesión
+const resetSessionBtn = document.getElementById("resetSession");
 
 // Elementos de la vista de empleados
 const viewEmployeesBtn = document.getElementById("viewEmployees");
@@ -73,12 +131,162 @@ const cancelStatusChangeBtn = document.getElementById("cancelStatusChange");
 
 // ===== FUNCIONES BÁSICAS =====
 
+// ===== FUNCIONES DE SCROLL AUTOMÁTICO =====
+function scrollToBottom(smooth = true) {
+    console.log("🔽 Intentando scroll automático...");
+    
+    // Intentar múltiples elementos para el scroll
+    const elementsToScroll = [chatBox, chatContainer, document.body, window];
+    
+    elementsToScroll.forEach((element, index) => {
+        if (element) {
+            try {
+                if (element === window) {
+                    // Para window, usar scrollTo con coordenadas
+                    if (smooth) {
+                        element.scrollTo({
+                            top: document.body.scrollHeight,
+                            behavior: 'smooth'
+                        });
+                    } else {
+                        element.scrollTo(0, document.body.scrollHeight);
+                    }
+                    console.log(`📜 Scroll ejecutado en window`);
+                } else {
+                    // Para elementos DOM normales
+                    if (smooth && element.scrollTo) {
+                        element.scrollTo({
+                            top: element.scrollHeight,
+                            behavior: 'smooth'
+                        });
+                    } else {
+                        element.scrollTop = element.scrollHeight;
+                    }
+                    console.log(`📜 Scroll ejecutado en elemento ${index}:`, element.id || element.className);
+                }
+            } catch (error) {
+                console.log(`⚠️ Error en scroll del elemento ${index}:`, error);
+            }
+        }
+    });
+}
+
+// Función para asegurar que el scroll se ejecute después de que el DOM se actualice
+function ensureScrollToBottom(smooth = true) {
+    console.log("🎯 Iniciando scroll automático garantizado");
+    
+    // Scroll inmediato
+    scrollToBottom(smooth);
+    
+    // Usar requestAnimationFrame para asegurar que el DOM esté actualizado
+    requestAnimationFrame(() => {
+        scrollToBottom(smooth);
+        
+        // Múltiples verificaciones con diferentes delays
+        setTimeout(() => scrollToBottom(smooth), 50);
+        setTimeout(() => scrollToBottom(smooth), 150);
+        setTimeout(() => scrollToBottom(smooth), 300);
+    });
+}
+
 function addMessage(message, sender) {
     const messageDiv = document.createElement("div");
     messageDiv.classList.add("message", sender);
-    messageDiv.innerHTML = `<div class="message-content">${message}</div>`;
+    
+    // Procesar el mensaje para mejor visualización
+    let processedMessage = message;
+    
+    if (sender === "bot") {
+        // Procesar el mensaje del bot para mejor formato
+        processedMessage = formatBotMessage(message);
+    }
+    
+    messageDiv.innerHTML = `<div class="message-content">${processedMessage}</div>`;
     chatBox.appendChild(messageDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    
+    console.log("➕ Mensaje agregado:", message.substring(0, 50) + "...");
+    
+    // Scroll inmediato y múltiple para garantizar que funcione
+    setTimeout(() => {
+        // Método 1: scrollTop directo
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+        if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+        
+        // Método 2: scrollIntoView del último mensaje
+        messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        
+        // Método 3: scroll suave con scrollTo
+        if (chatBox && chatBox.scrollTo) {
+            chatBox.scrollTo({
+                top: chatBox.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+        
+        console.log("🔽 Scroll múltiple ejecutado");
+    }, 10);
+    
+    // Scroll de respaldo
+    setTimeout(() => {
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+        if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+        console.log("🔄 Scroll de respaldo ejecutado");
+    }, 100);
+}
+
+// Función para formatear mensajes del bot
+function formatBotMessage(message) {
+    console.log("🎨 Formateando mensaje del bot:", message);
+    
+    // Limpiar el mensaje
+    let formatted = message.toString().trim();
+    
+    // Escapar HTML para seguridad pero mantener saltos de línea
+    formatted = formatted
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    
+    // Convertir saltos de línea a <br>
+    formatted = formatted.replace(/\n/g, '<br>');
+    
+    // Convertir dobles saltos de línea a párrafos
+    formatted = formatted.replace(/\r?\n\r?\n/g, '</p><p>');
+    
+    // Detectar y formatear listas con guiones o asteriscos
+    formatted = formatted.replace(/^[-*•]\s(.+)$/gm, '<li>$1</li>');
+    
+    // Envolver listas en <ul>
+    if (formatted.includes('<li>')) {
+        formatted = formatted.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+    }
+    
+    // Detectar y formatear listas numeradas
+    formatted = formatted.replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>');
+    
+    // Envolver listas numeradas en <ol>
+    if (formatted.includes('<li>') && /^\d+\./.test(message)) {
+        formatted = formatted.replace(/(<li>.*<\/li>)/gs, '<ol>$1</ol>');
+    }
+    
+    // Formatear texto en negrita con **texto**
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Formatear texto en cursiva con *texto*
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Formatear código con `código`
+    formatted = formatted.replace(/`(.*?)`/g, '<code>$1</code>');
+    
+    // Si es una lista o tiene múltiples puntos, agregar estructura
+    if (formatted.includes('<br><br>') || formatted.length > 200) {
+        formatted = `<div class="bot-message-structured">${formatted}</div>`;
+    }
+    
+    console.log("✨ Mensaje formateado:", formatted);
+    return formatted;
 }
 
 function showTypingIndicator() {
@@ -96,7 +304,17 @@ function showTypingIndicator() {
         </div>
     `;
     chatBox.appendChild(typingDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    
+    console.log("⌨️ Indicador de escritura mostrado");
+    
+    // Scroll directo y efectivo
+    setTimeout(() => {
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+        if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+        typingDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        console.log("🔽 Scroll para typing indicator ejecutado");
+    }, 10);
+    
     return typingDiv;
 }
 
@@ -104,6 +322,14 @@ function removeTypingIndicator() {
     const typingIndicator = document.getElementById("typing-indicator");
     if (typingIndicator) {
         typingIndicator.remove();
+        console.log("❌ Indicador de escritura removido");
+        
+        // Scroll después de remover
+        setTimeout(() => {
+            if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+            if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+            console.log("🔽 Scroll post-removal ejecutado");
+        }, 20);
     }
 }
 
@@ -111,6 +337,7 @@ async function sendMessage() {
     const message = userInput.value.trim();
     console.log("📤 Enviando mensaje:", message);
     console.log("🔗 URL del webhook:", N8N_WEBHOOK_URL);
+    console.log("🔑 Session ID:", SESSION_ID);
     
     if (message) {
         addMessage(message, "user");
@@ -121,8 +348,15 @@ async function sendMessage() {
         
         try {
             console.log("🚀 Iniciando petición fetch...");
-            const requestBody = { message: message };
+            
+            // Solo enviar mensaje e id de sesión
+            const requestBody = { 
+                message: message,
+                id: SESSION_ID
+            };
+            
             console.log("📦 Body de la petición:", requestBody);
+            console.log("🔍 JSON que se enviará:", JSON.stringify(requestBody, null, 2));
             
             const response = await fetch(N8N_WEBHOOK_URL, {
                 method: 'POST',
@@ -1245,6 +1479,15 @@ if (userInput) {
             sendMessage();
         }
     });
+    
+    // Scroll cuando el usuario hace focus en el input
+    userInput.addEventListener("focus", function() {
+        setTimeout(() => {
+            if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+            if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+            console.log("🎯 Scroll por focus en input");
+        }, 100);
+    });
 }
 
 // Event listeners del modal de empleados
@@ -1487,6 +1730,15 @@ if (themeBtn) {
     themeBtn.addEventListener("click", toggleTheme);
 }
 
+// Event listener del botón de reset de sesión
+if (resetSessionBtn) {
+    resetSessionBtn.addEventListener("click", function() {
+        if (confirm("¿Estás seguro de que quieres iniciar una nueva conversación? Se perderá el historial actual.")) {
+            resetSession();
+        }
+    });
+}
+
 // Cerrar modales al hacer clic fuera
 window.addEventListener("click", function(e) {
     if (e.target === modal) {
@@ -1520,6 +1772,9 @@ loadSavedTheme();
 // Agregar mensaje de bienvenida al cargar
 document.addEventListener('DOMContentLoaded', function() {
     console.log("🚀 Iniciando aplicación RRHH...");
+    
+    // Inicializar sistema de sesiones
+    initializeSession();
     
     // Debug: verificar que los elementos existen
     console.log("🔍 Verificando elementos:");
