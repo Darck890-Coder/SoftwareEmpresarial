@@ -1,365 +1,592 @@
+// =============== Utils/State =================
 const $$ = (s) => document.querySelector(s);
 const $$$ = (s) => document.querySelectorAll(s);
+
 const toast = (msg) => {
   const t = $$("#toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 2000);
+  if (t) {
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2500);
+  } else {
+    alert(msg);
+  }
 };
 
-// ===== Estado =====
-let state = {
-  clientes: JSON.parse(localStorage.getItem("clientes") || "[]"),
-  opps: JSON.parse(localStorage.getItem("opps") || "[]"),
-  acts: JSON.parse(localStorage.getItem("acts") || "[]"),
-  cfg: JSON.parse(
-    localStorage.getItem("cfg") || '{"n8nEmail":"","n8nReport":"","n8nCsat":""}'
-  ),
+const state = {
+  clientes: [],
+  opps: [],
+  acts: [],
+  csat: [],
+  // Config por defecto: cambia por tus credenciales/URLs
+  cfg: {
+    supabaseUrl: "https://vgzsksthdrorfmbqswea.supabase.co",
+    supabaseKey:
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnenNrc3RoZHJvcmZtYnFzd2VhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNTIxNDcsImV4cCI6MjA3MTkyODE0N30.Gj9rUDiRJ8YAkShJaj5WiYUHlH-vh4rfRHz8DfceuTQ",
+    n8nCsat: "https://mdev.app.n8n.cloud/webhook/csat-endpoint",
+    n8nChat:
+      "https://mdev.app.n8n.cloud/webhook/b1f95f46-ed11-405b-be53-36f1e4afec77",
+  },
+  // para controlar ediciones sin tocar el HTML
+  editing: {
+    oppId: null,
+    actId: null,
+  },
 };
 
-const persist = () => {
-  localStorage.setItem("clientes", JSON.stringify(state.clientes));
-  localStorage.setItem("opps", JSON.stringify(state.opps));
-  localStorage.setItem("acts", JSON.stringify(state.acts));
-  localStorage.setItem("cfg", JSON.stringify(state.cfg));
+// =============== Navegación por tabs =================
+const setupTabs = () => {
+  $$$(".tab-btn").forEach((b) =>
+    b.addEventListener("click", () => {
+      $$$(".tab-btn").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active");
+      const tab = b.dataset.tab;
+      $$$("section.tab").forEach((sec) => (sec.hidden = true));
+      const target = $$("#tab-" + tab);
+      if (target) target.hidden = false;
+    })
+  );
 };
 
-// ===== Navegación =====
-$$$(".tab-btn").forEach((b) =>
-  b.addEventListener("click", () => {
-    $$$(".tab-btn").forEach((x) => x.classList.remove("active"));
-    b.classList.add("active");
-    $$$("section.tab").forEach((sec) => (sec.hidden = true));
-    $$("#tab-" + b.dataset.tab).hidden = false;
-  })
-);
+// =============== Supabase REST helpers =================
+const supabaseFetch = async (
+  table,
+  method = "GET",
+  body = null,
+  query = ""
+) => {
+  const url = `${state.cfg.supabaseUrl}/rest/v1/${table}${query}`;
+  const opts = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      apikey: state.cfg.supabaseKey,
+      Authorization: `Bearer ${state.cfg.supabaseKey}`,
+      Prefer: "return=representation",
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
 
-// ===== CRUD Clientes =====
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`${method} ${table} failed: ${txt}`);
+  }
+  return res.json();
+};
+
+// =============== Carga inicial =================
+const loadData = async () => {
+  try {
+    const [clientes, opps, acts, csat] = await Promise.all([
+      supabaseFetch("clientes"),
+      supabaseFetch("opps"),
+      supabaseFetch("acts"),
+      supabaseFetch("csat"),
+    ]);
+    state.clientes = clientes;
+    state.opps = opps;
+    state.acts = acts;
+    state.csat = csat;
+
+    renderClientes();
+    renderOpps();
+    renderActs();
+    // Dropdowns dependientes de clientes
+    hydrateClientSelects();
+  } catch (e) {
+    console.error(e);
+    toast("Error cargando datos desde Supabase");
+  }
+};
+
+// =============== Render: Clientes =================
 const renderClientes = () => {
-  $$("#clientesTabla").innerHTML = state.clientes
+  const tbody = $$("#clientesTabla");
+  if (!tbody) return;
+  tbody.innerHTML = state.clientes
     .map(
-      (c) =>
-        `<tr>
-                <td>${c.nombre}</td>
-                <td>${c.email}</td>
-                <td>${c.rfc || ""}</td>
-                <td>${c.razon || ""}</td>
-                <td class="acciones-tabla">
-                    <button class="btn edit btn-tabla" onclick="editarCliente('${
-                      c.id
-                    }')">Editar</button>
-                    <button class="btn danger btn-tabla" onclick="eliminarCliente('${
-                      c.id
-                    }')">Eliminar</button>
-                </td>
-            </tr>`
+      (c) => `
+    <tr>
+      <td>${c.nombre || ""}</td>
+      <td>${c.email || ""}</td>
+      <td>${c.rfc || ""}</td>
+      <td>${c.razon || ""}</td>
+      <td class="acciones-tabla">
+        <button class="btn edit btn-tabla" data-action="edit" data-id="${
+          c.id
+        }">Editar</button>
+        <button class="btn danger btn-tabla" data-action="del" data-id="${
+          c.id
+        }">Eliminar</button>
+      </td>
+    </tr>`
     )
     .join("");
+
+  // Delegación de eventos para acciones
+  tbody.onclick = async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    if (action === "edit") editarCliente(id);
+    if (action === "del") eliminarCliente(id);
+  };
 };
 
-const editarCliente = (id) => {
-  const cliente = state.clientes.find((c) => c.id === id);
-  if (!cliente) return;
-
-  $$("#clienteId").value = cliente.id;
-  $$("#cNombre").value = cliente.nombre;
-  $$("#cEmail").value = cliente.email;
-  $$("#cRfc").value = cliente.rfc;
-  $$("#cDireccion").value = cliente.direccion;
-  $$("#cTelefono").value = cliente.telefono;
-  $$("#cRazon").value = cliente.razon;
-
-  toast("Cliente cargado para editar");
+const hydrateClientSelects = () => {
+  // Rellena selects de cliente en oportunidades, actividades y CSAT
+  const options = state.clientes
+    .map((c) => `<option value="${c.id}">${c.nombre}</option>`)
+    .join("");
+  const oCliente = $$("#oCliente");
+  const aCliente = $$("#aCliente");
+  const csatCliente = $$("#csatCliente");
+  if (oCliente) oCliente.innerHTML = options;
+  if (aCliente) aCliente.innerHTML = options;
+  if (csatCliente) csatCliente.innerHTML = options;
 };
 
-const eliminarCliente = (id) => {
-  if (!confirm("¿Estás seguro de eliminar este cliente?")) return;
+// =============== Render: Oportunidades =================
+const renderOpps = () => {
+  const tbody = $$("#oppsTabla");
+  if (!tbody) return;
+  tbody.innerHTML = state.opps
+    .map((o) => {
+      const cli =
+        state.clientes.find((c) => c.id === o.clienteId)?.nombre || "?";
+      return `
+      <tr>
+        <td>${cli}</td>
+        <td>${o.titulo || ""}</td>
+        <td>${o.monto || ""}</td>
+        <td>${o.tipo || ""}</td>
+        <td>${o.descripcion || ""}</td>
+        <td class="acciones-tabla">
+          <button class="btn edit btn-tabla" data-action="edit-opp" data-id="${
+            o.id
+          }">Editar</button>
+          <button class="btn danger btn-tabla" data-action="del-opp" data-id="${
+            o.id
+          }">Eliminar</button>
+        </td>
+      </tr>`;
+    })
+    .join("");
 
-  state.clientes = state.clientes.filter((c) => c.id !== id);
-  // También eliminar oportunidades y actividades relacionadas
-  state.opps = state.opps.filter((o) => o.clienteId !== id);
-  state.acts = state.acts.filter((a) => a.clienteId !== id);
-
-  persist();
-  renderClientes();
-  renderOpps();
-  renderActs();
-  toast("Cliente eliminado");
+  tbody.onclick = async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    if (action === "edit-opp") editarOpp(id);
+    if (action === "del-opp") eliminarOpp(id);
+  };
 };
 
-$$("#clienteForm").addEventListener("submit", (e) => {
+// =============== Render: Actividades =================
+const renderActs = () => {
+  const tbody = $$("#actsTabla");
+  if (!tbody) return;
+  tbody.innerHTML = state.acts
+    .map((a) => {
+      const cli =
+        state.clientes.find((c) => c.id === a.clienteId)?.nombre || "?";
+      return `
+      <tr>
+        <td>${a.tipo || ""}</td>
+        <td>${cli}</td>
+        <td>${a.notas || ""}</td>
+        <td>${a.tipoCliente || ""}</td>
+        <td>${a.descCliente || ""}</td>
+        <td class="acciones-tabla">
+          <button class="btn edit btn-tabla" data-action="edit-act" data-id="${
+            a.id
+          }">Editar</button>
+          <button class="btn danger btn-tabla" data-action="del-act" data-id="${
+            a.id
+          }">Eliminar</button>
+        </td>
+      </tr>`;
+    })
+    .join("");
+
+  tbody.onclick = async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    if (action === "edit-act") editarAct(id);
+    if (action === "del-act") eliminarAct(id);
+  };
+};
+
+// =============== Clientes: CRUD =================
+$$("#clienteForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (
-    !$$("#cNombre").value.trim() ||
-    !$$("#cEmail").value.trim() ||
-    !$$("#cRfc").value.trim() ||
-    !$$("#cDireccion").value.trim()
-  ) {
+  const nombre = $$("#cNombre")?.value.trim();
+  const email = $$("#cEmail")?.value.trim();
+  const rfc = $$("#cRfc")?.value.trim();
+  const direccion = $$("#cDireccion")?.value.trim();
+  const telefono = $$("#cTelefono")?.value.trim();
+  const razon = $$("#cRazon")?.value.trim();
+  const idField = $$("#clienteId");
+  if (!nombre || !email || !rfc || !direccion) {
     return toast(
       "Completa todos los campos obligatorios (Nombre, Email, RFC, Dirección)"
     );
   }
 
-  const id = $$("#clienteId").value || Date.now() + "";
+  const id = idField?.value || Date.now().toString();
   const obj = {
-    id: id,
-    nombre: $$("#cNombre").value.trim(),
-    email: $$("#cEmail").value.trim(),
-    rfc: $$("#cRfc").value.trim(),
-    direccion: $$("#cDireccion").value.trim(),
-    telefono: $$("#cTelefono").value.trim(),
-    razon: $$("#cRazon").value.trim(),
+    id,
+    nombre,
+    email,
+    rfc,
+    direccion,
+    telefono,
+    razon,
   };
 
-  if ($$("#clienteId").value) {
-    // Editar cliente existente
-    const index = state.clientes.findIndex((c) => c.id === id);
-    if (index !== -1) {
-      state.clientes[index] = obj;
+  try {
+    if (idField?.value) {
+      await supabaseFetch("clientes", "PATCH", obj, `?id=eq.${id}`);
       toast("Cliente actualizado");
+    } else {
+      await supabaseFetch("clientes", "POST", obj);
+      toast("Cliente agregado");
     }
-  } else {
-    // Nuevo cliente
-    state.clientes.push(obj);
-    toast("Cliente agregado");
+    await loadData();
+    e.target.reset();
+    if (idField) idField.value = "";
+  } catch (err) {
+    console.error(err);
+    toast("Error guardando cliente");
   }
-
-  persist();
-  renderClientes();
-  renderOpps();
-  renderActs();
-  e.target.reset();
-  $$("#clienteId").value = "";
 });
 
-// ===== CRUD Oportunidades =====
-const renderOpps = () => {
-  $$("#oppsTabla").innerHTML = state.opps
-    .map(
-      (o) =>
-        `<tr>
-                <td>${
-                  state.clientes.find((c) => c.id === o.clienteId)?.nombre ||
-                  "?"
-                }</td>
-                <td>${o.titulo}</td>
-                <td>${o.monto}</td>
-                <td>${o.tipo}</td>
-                <td>${o.descripcion}</td>
-                <td class="acciones-tabla">
-                    <button class="btn edit btn-tabla" onclick="editarOpp('${
-                      o.id
-                    }')">Editar</button>
-                    <button class="btn danger btn-tabla" onclick="eliminarOpp('${
-                      o.id
-                    }')">Eliminar</button>
-                </td>
-            </tr>`
-    )
-    .join("");
-  $$("#oCliente").innerHTML = state.clientes
-    .map((c) => `<option value="${c.id}">${c.nombre}</option>`)
-    .join("");
+const editarCliente = (id) => {
+  const c = state.clientes.find((x) => x.id === id);
+  if (!c) return;
+  $$("#clienteId").value = c.id;
+  $$("#cNombre").value = c.nombre || "";
+  $$("#cEmail").value = c.email || "";
+  $$("#cRfc").value = c.rfc || "";
+  $$("#cDireccion").value = c.direccion || "";
+  $$("#cTelefono").value = c.telefono || "";
+  $$("#cRazon").value = c.razon || "";
+  toast("Cliente cargado para editar");
 };
 
-const editarOpp = (id) => {
-  const opp = state.opps.find((o) => o.id === id);
-  if (!opp) return;
-
-  $$("#oCliente").value = opp.clienteId;
-  $$("#oTitulo").value = opp.titulo;
-  $$("#oMonto").value = opp.monto;
-  $$("#oTipo").value = opp.tipo;
-  $$("#oDesc").value = opp.descripcion;
-
-  toast("Oportunidad cargada para editar");
+const eliminarCliente = async (id) => {
+  if (!confirm("¿Estás seguro de eliminar este cliente?")) return;
+  try {
+    // Borrar relaciones para evitar huérfanos (si no tienes FK con ON DELETE CASCADE)
+    await supabaseFetch("opps", "DELETE", null, `?clienteId=eq.${id}`);
+    await supabaseFetch("acts", "DELETE", null, `?clienteId=eq.${id}`);
+    await supabaseFetch("clientes", "DELETE", null, `?id=eq.${id}`);
+    await loadData();
+    toast("Cliente eliminado");
+  } catch (err) {
+    console.error(err);
+    toast("Error eliminando cliente");
+  }
 };
 
-const eliminarOpp = (id) => {
-  if (!confirm("¿Estás seguro de eliminar esta oportunidad?")) return;
-
-  state.opps = state.opps.filter((o) => o.id !== id);
-  persist();
-  renderOpps();
-  toast("Oportunidad eliminada");
-};
-
-$$("#oppForm").addEventListener("submit", (e) => {
+// =============== Oportunidades: CRUD =================
+$$("#oppForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (
-    !$$("#oCliente").value ||
-    !$$("#oTitulo").value.trim() ||
-    !$$("#oMonto").value.trim() ||
-    !$$("#oTipo").value
-  ) {
+  const clienteId = $$("#oCliente")?.value;
+  const titulo = $$("#oTitulo")?.value.trim();
+  const monto = $$("#oMonto")?.value.trim();
+  const tipo = $$("#oTipo")?.value;
+  const descripcion = $$("#oDesc")?.value.trim();
+
+  if (!clienteId || !titulo || !monto || !tipo) {
     return toast("Completa todos los campos de la oportunidad");
   }
 
+  const isEditing = !!state.editing.oppId;
   const obj = {
-    id: Date.now() + "",
-    clienteId: $$("#oCliente").value,
-    titulo: $$("#oTitulo").value.trim(),
-    monto: $$("#oMonto").value.trim(),
-    tipo: $$("#oTipo").value,
-    descripcion: $$("#oDesc").value.trim(),
+    id: isEditing ? state.editing.oppId : Date.now().toString(),
+    clienteId,
+    titulo,
+    monto,
+    tipo,
+    descripcion,
   };
-  state.opps.push(obj);
-  persist();
-  renderOpps();
-  toast("Oportunidad agregada");
-  e.target.reset();
+
+  try {
+    if (isEditing) {
+      await supabaseFetch("opps", "PATCH", obj, `?id=eq.${obj.id}`);
+      toast("Oportunidad actualizada");
+    } else {
+      await supabaseFetch("opps", "POST", obj);
+      toast("Oportunidad agregada");
+    }
+    state.editing.oppId = null;
+    await loadData();
+    e.target.reset();
+  } catch (err) {
+    console.error(err);
+    toast("Error guardando oportunidad");
+  }
 });
 
-// ===== CRUD Actividades =====
-const renderActs = () => {
-  $$("#actsTabla").innerHTML = state.acts
-    .map(
-      (a) =>
-        `<tr>
-                <td>${a.tipo}</td>
-                <td>${
-                  state.clientes.find((c) => c.id === a.clienteId)?.nombre ||
-                  "?"
-                }</td>
-                <td>${a.notas}</td>
-                <td>${a.tipoCliente}</td>
-                <td>${a.descCliente}</td>
-                <td class="acciones-tabla">
-                    <button class="btn edit btn-tabla" onclick="editarAct('${
-                      a.id
-                    }')">Editar</button>
-                    <button class="btn danger btn-tabla" onclick="eliminarAct('${
-                      a.id
-                    }')">Eliminar</button>
-                </td>
-            </tr>`
-    )
-    .join("");
-  $$("#aCliente").innerHTML = state.clientes
-    .map((c) => `<option value="${c.id}">${c.nombre}</option>`)
-    .join("");
-  $$("#csatCliente").innerHTML = state.clientes
-    .map((c) => `<option value="${c.id}">${c.nombre}</option>`)
-    .join("");
+const editarOpp = (id) => {
+  const o = state.opps.find((x) => x.id === id);
+  if (!o) return;
+  $$("#oCliente").value = o.clienteId || "";
+  $$("#oTitulo").value = o.titulo || "";
+  $$("#oMonto").value = o.monto || "";
+  $$("#oTipo").value = o.tipo || "";
+  $$("#oDesc").value = o.descripcion || "";
+  state.editing.oppId = id;
+  toast("Oportunidad cargada para editar");
 };
 
-const editarAct = (id) => {
-  const act = state.acts.find((a) => a.id === id);
-  if (!act) return;
-
-  $$("#aTipo").value = act.tipo;
-  $$("#aCliente").value = act.clienteId;
-  $$("#aTipoCliente").value = act.tipoCliente;
-  $$("#aDescCliente").value = act.descCliente;
-  $$("#aNotas").value = act.notas;
-
-  toast("Actividad cargada para editar");
+const eliminarOpp = async (id) => {
+  if (!confirm("¿Estás seguro de eliminar esta oportunidad?")) return;
+  try {
+    await supabaseFetch("opps", "DELETE", null, `?id=eq.${id}`);
+    await loadData();
+    toast("Oportunidad eliminada");
+  } catch (err) {
+    console.error(err);
+    toast("Error eliminando oportunidad");
+  }
 };
 
-const eliminarAct = (id) => {
-  if (!confirm("¿Estás seguro de eliminar esta actividad?")) return;
-
-  state.acts = state.acts.filter((a) => a.id !== id);
-  persist();
-  renderActs();
-  toast("Actividad eliminada");
-};
-
-$$("#actForm").addEventListener("submit", (e) => {
+// =============== Actividades: CRUD =================
+$$("#actForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (
-    !$$("#aTipo").value ||
-    !$$("#aCliente").value ||
-    !$$("#aTipoCliente").value ||
-    !$$("#aDescCliente").value.trim()
-  ) {
+  const tipo = $$("#aTipo")?.value;
+  const clienteId = $$("#aCliente")?.value;
+  const tipoCliente = $$("#aTipoCliente")?.value;
+  const descCliente = $$("#aDescCliente")?.value.trim();
+  const notas = $$("#aNotas")?.value.trim();
+
+  if (!tipo || !clienteId || !tipoCliente || !descCliente) {
     return toast("Completa todos los campos de la actividad");
   }
 
+  const isEditing = !!state.editing.actId;
   const obj = {
-    id: Date.now() + "",
-    tipo: $$("#aTipo").value,
-    clienteId: $$("#aCliente").value,
-    tipoCliente: $$("#aTipoCliente").value,
-    descCliente: $$("#aDescCliente").value.trim(),
-    notas: $$("#aNotas").value.trim(),
+    id: isEditing ? state.editing.actId : Date.now().toString(),
+    tipo,
+    clienteId,
+    tipoCliente,
+    descCliente,
+    notas,
   };
-  state.acts.push(obj);
-  persist();
-  renderActs();
-  toast("Actividad guardada");
-  e.target.reset();
+
+  try {
+    if (isEditing) {
+      await supabaseFetch("acts", "PATCH", obj, `?id=eq.${obj.id}`);
+      toast("Actividad actualizada");
+    } else {
+      await supabaseFetch("acts", "POST", obj);
+      toast("Actividad guardada");
+    }
+    state.editing.actId = null;
+    await loadData();
+    e.target.reset();
+  } catch (err) {
+    console.error(err);
+    toast("Error guardando actividad");
+  }
 });
 
-// ===== n8n Conexión (solo CSAT se conserva) =====
-$$("#btnEnviarCsat").addEventListener("click", async () => {
-  if (!state.cfg.n8nCsat)
-    return toast("Configura el webhook de CSAT en Configuración");
-  if (!$$("#csatCliente").value || !$$("#csatScore").value.trim()) {
+const editarAct = (id) => {
+  const a = state.acts.find((x) => x.id === id);
+  if (!a) return;
+  $$("#aTipo").value = a.tipo || "";
+  $$("#aCliente").value = a.clienteId || "";
+  $$("#aTipoCliente").value = a.tipoCliente || "";
+  $$("#aDescCliente").value = a.descCliente || "";
+  $$("#aNotas").value = a.notas || "";
+  state.editing.actId = id;
+  toast("Actividad cargada para editar");
+};
+
+const eliminarAct = async (id) => {
+  if (!confirm("¿Estás seguro de eliminar esta actividad?")) return;
+  try {
+    await supabaseFetch("acts", "DELETE", null, `?id=eq.${id}`);
+    await loadData();
+    toast("Actividad eliminada");
+  } catch (err) {
+    console.error(err);
+    toast("Error eliminando actividad");
+  }
+};
+
+// =============== n8n Utils + CSAT =================
+const validateUrl = (url) => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const sendToN8N = async (url, payload, successMsg = "Datos enviados") => {
+  if (!url || !validateUrl(url)) {
+    toast("URL de n8n no configurada o inválida");
+    return false;
+  }
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = { rawResponse: await res.text() };
+    }
+    toast(successMsg);
+    return data;
+  } catch (e) {
+    console.error(e);
+    toast("Error al conectar con n8n");
+    return false;
+  }
+};
+
+// Botón enviar CSAT en la pestaña Reportes
+$$("#btnEnviarCsat")?.addEventListener("click", async () => {
+  const clienteId = $$("#csatCliente")?.value;
+  const score = $$("#csatScore")?.value;
+  const tiempo = $$("#csatTiempo")?.value;
+  const atencion = $$("#csatAtencion")?.value;
+  const comment = $$("#csatComment")?.value.trim();
+  const mejora = $$("#csatMejora")?.value.trim();
+
+  if (!clienteId || score === "" || score === null) {
     return toast("Cliente y calificación son obligatorios");
   }
 
+  const cliente = state.clientes.find((c) => c.id === clienteId);
+  if (!cliente) return toast("Cliente no encontrado");
+
   const payload = {
-    cliente: $$("#csatCliente").value,
-    score: $$("#csatScore").value,
-    tiempo: $$("#csatTiempo").value,
-    atencion: $$("#csatAtencion").value,
-    comment: $$("#csatComment").value,
-    mejora: $$("#csatMejora").value,
+    id: Date.now().toString(),
+    cliente: cliente.nombre,
+    cliente_id: cliente.id,
+    cliente_email: cliente.email || "",
+    score: Number(score),
+    tiempo: tiempo ? Number(tiempo) : null,
+    atencion: atencion || "",
+    comment,
+    mejora,
+    timestamp: new Date().toISOString(),
   };
-  await fetch(state.cfg.n8nCsat, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  toast("CSAT enviado a n8n");
+
+  // 1) Enviar a n8n (opcional)
+  await sendToN8N(state.cfg.n8nCsat, payload, "CSAT enviado a n8n");
+
+  // 2) Guardar en Supabase (tabla csat)
+  try {
+    await supabaseFetch("csat", "POST", payload);
+    toast("CSAT guardado en Supabase");
+    await loadData();
+    // limpiar
+    $$("#csatScore").value = "";
+    $$("#csatTiempo").value = "";
+    $$("#csatAtencion").value = "Excelente";
+    $$("#csatComment").value = "";
+    $$("#csatMejora").value = "";
+  } catch (e) {
+    console.error(e);
+    toast("Error guardando CSAT en Supabase");
+  }
 });
 
-// ===== Chat =====
-const chatToggle = document.getElementById("chat-toggle");
-const chatBox = document.getElementById("chat-box");
-const chatMessages = document.getElementById("chat-messages");
-const chatInput = document.getElementById("chat-input");
-const sendBtn = document.getElementById("send-btn");
+// =============== Chat burbuja + n8n Chat =================
+const chatToggle = $$("#chat-toggle");
+const chatBox = $$("#chat-box");
+const chatMessages = $$("#chat-messages");
+const chatInput = $$("#chat-input");
+const sendBtn = $$("#send-btn");
 
-chatToggle.addEventListener("click", () => {
-  chatBox.classList.toggle("show");
+chatToggle?.addEventListener("click", () => {
+  chatBox?.classList.toggle("show");
 });
 
-sendBtn.addEventListener("click", sendMessage);
-chatInput.addEventListener("keypress", (e) => {
+const appendMsg = (who, text) => {
+  const div = document.createElement("div");
+  div.classList.add("msg", who);
+  div.textContent = text;
+  chatMessages.appendChild(div);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+};
+
+const sendMessage = async () => {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  appendMsg("user", text);
+  chatInput.value = "";
+
+  const typing = document.createElement("div");
+  typing.classList.add("msg", "bot", "typing");
+  typing.textContent = "Escribiendo...";
+  chatMessages.appendChild(typing);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+
+  // n8n webhook si está configurado
+  if (state.cfg.n8nChat && validateUrl(state.cfg.n8nChat)) {
+    const payload = {
+      message: text,
+      timestamp: new Date().toISOString(),
+      type: "chat_message",
+    };
+    const res = await sendToN8N(state.cfg.n8nChat, payload, "Mensaje enviado");
+    chatMessages.removeChild(typing);
+    let reply = "Gracias por tu mensaje. ¿En qué más puedo ayudarte?";
+    if (res) {
+      if (typeof res === "object") {
+        reply =
+          res.reply ||
+          res.message ||
+          (res.data &&
+            (res.data.reply || res.data.response || res.data.message)) ||
+          res.rawResponse ||
+          JSON.stringify(res);
+      } else if (typeof res === "string") {
+        reply = res;
+      }
+    }
+    appendMsg("bot", reply);
+  } else {
+    setTimeout(() => {
+      chatMessages.removeChild(typing);
+      appendMsg("bot", "Gracias por tu mensaje. Pronto te responderemos. ☀️");
+    }, 700);
+  }
+};
+
+sendBtn?.addEventListener("click", sendMessage);
+chatInput?.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();
 });
 
-function sendMessage() {
-  const text = chatInput.value.trim();
-  if (text === "") return;
+// =============== Email actividad (botón decorativo) =================
+$$("#btnEmailActividad")?.addEventListener("click", () => {
+  // Aquí puedes integrar tu webhook/emailer real
+  toast("Función de envío de email: integra tu n8n/emailer aquí.");
+});
 
-  // Mensaje del usuario
-  const userMsg = document.createElement("div");
-  userMsg.classList.add("msg", "user");
-  userMsg.textContent = text;
-  chatMessages.appendChild(userMsg);
-
-  chatInput.value = "";
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-
-  // Respuesta automática simple
-  setTimeout(() => {
-    const botMsg = document.createElement("div");
-    botMsg.classList.add("msg", "bot");
-    botMsg.textContent = "Gracias por tu mensaje, pronto te responderemos. ☀️";
-    chatMessages.appendChild(botMsg);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }, 800);
-}
-
-// ===== Init =====
-renderClientes();
-renderOpps();
-renderActs();
-
-// Agregar marca de agua a las tablas
-$$$("table").forEach((table) => {
-  table.classList.add("table-watermark");
+// =============== Init =================
+document.addEventListener("DOMContentLoaded", async () => {
+  setupTabs();
+  await loadData();
 });
